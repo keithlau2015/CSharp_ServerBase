@@ -1,8 +1,8 @@
 namespace Network
 {
-    public abstract class BasePacket
+    public class Packet
     {
-        public BasePacket()
+        public Packet()
         {
             
         }
