@@ -1,7 +1,12 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Database
 {
-    public abstract class DatabaseBase
+    public abstract class DatabaseManagerBase
     {
+        protected CancellationToken requestCancelToken = null;
+
         public enum Action : int
         {
             Create = 1,
