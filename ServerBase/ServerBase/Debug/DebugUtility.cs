@@ -1,25 +1,27 @@
+using System;
+
 namespace Debug
 {
     public static class DebugUtility
     {
-        public static void DebugLog(string contents)
+        public static void DebugLog(object caller, string contents)
         {
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine(contents);
+            Console.WriteLine($"Caller[{caller.GetType().Name}]: {contents}");
             Reset();
         }
 
-        public static void WarningLog(string contents)
+        public static void WarningLog(object caller, string contents)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine(contents);
+            Console.WriteLine($"Caller[{caller.GetType().Name}]: {contents}");
             Reset();
         }
 
-        public static void ErrorLog(string contents)
+        public static void ErrorLog(object caller, string contents)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(contents);
+            Console.WriteLine($"Caller[{caller.GetType().Name}]: {contents}");
             Reset();
         }
 
