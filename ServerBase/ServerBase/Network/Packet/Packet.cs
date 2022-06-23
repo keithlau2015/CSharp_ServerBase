@@ -14,6 +14,7 @@ namespace Network
         private byte[] readableBuffer;
         private int readPos;
 
+        #region Constructor
         /// <summary>Creates a new empty packet (without an ID).</summary>
         public Packet()
         {
@@ -40,8 +41,9 @@ namespace Network
 
             SetBytes(data);
         }
+        #endregion
 
-        #region Functions
+        #region Basic
         /// <summary>Sets the packet's content and prepares it to be read.</summary>
         /// <param name="data">The bytes to add to the packet.</param>
         public void SetBytes(byte[] data)
@@ -117,15 +119,13 @@ namespace Network
                 return result;
             }
         }
-
-        /// <summary>Adds a Type to the packet.</summary>
+         <summary>Adds a Type to the packet.</summary>
         /// <param name="value">The Class Type to add.</param>
         public void Write(object value)
         {
             buffer.AddRange(ObjectToBytes(value));
         }
-
-        /// <summary>Adds a byte to the packet.</summary>
+         <summary>Adds a byte to the packet.</summary>
         /// <param name="value">The byte to add.</param>
         public void Write(byte value)
         {
@@ -393,7 +393,7 @@ namespace Network
         #endregion
 
         private bool disposed = false;
-
+        
         protected virtual void Dispose(bool disposing)
         {
             if (!disposed)
@@ -404,8 +404,7 @@ namespace Network
                     readableBuffer = null;
                     readPos = 0;
                 }
-
-                disposed = true;
+             disposed = true;
             }
         }
 
