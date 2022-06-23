@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "4O5G8z6Ef0yiVLidCv08zCYgHIYqVGRTRx6aU7tTntI9Cvr9f0iaqWiGXzJvX/u7Qj4JtV20Pj+BxjaiD1+uuA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Keith\\Documents\\Project\\C#\\CSharp_ServerBase\\GameServer\\GameServer.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Keith\\.nuget\\packages\\google.protobuf\\3.21.1\\google.protobuf.3.21.1.nupkg.sha512"
+  ],
+  "logs": []
+}
