@@ -5,12 +5,11 @@ using System.Text;
 namespace Network
 {
     public class NetClient
-    {        
+    {    
+            
         public NetClient()
         {
 
-        }
-
-        
+        }        
     }
 }
