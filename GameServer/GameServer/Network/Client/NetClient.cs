@@ -17,7 +17,7 @@ namespace Network
             cts = new CancellationTokenSource();
         }
 
-        public async Task SendMsgAsync(string header, Packet packet)
+        public async void SendMsg(string header, Packet packet)
         {
             using (NetworkStream stream = tcpClient.GetStream())
             {

@@ -1,4 +1,4 @@
-using ProtoBuf;
+using Protobuff;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -44,6 +44,13 @@ namespace Network
 
             SetBytes(data);
         }
+
+        ~Packet()
+        {
+            buffer = null;
+            readableBuffer = null;
+            readPos = 0;
+        }
         #endregion
 
         #region Basic
@@ -69,7 +76,7 @@ namespace Network
         }
 
         /// <summary>Gets the packet's content in array form.</summary>
-        public byte[] ToArray()
+        public byte[] ToBytes()
         {
             readableBuffer = buffer.ToArray();
             return readableBuffer;
@@ -110,7 +117,7 @@ namespace Network
         /// </summary>
         /// <param name="obj">The targert object needed to convert to byte</param>
         /// <returns> a array bytes </returns>
-        private byte[] ObjectToBytes(object obj)
+        public static byte[] ObjectToBytes(object obj)
         {
             using (MemoryStream ms = new MemoryStream())
             {
@@ -122,13 +129,13 @@ namespace Network
                 return result;
             }
         }
-         <summary>Adds a Type to the packet.</summary>
+        /// <summary>Adds a Type to the packet.</summary>
         /// <param name="value">The Class Type to add.</param>
         public void Write(object value)
         {
             buffer.AddRange(ObjectToBytes(value));
         }
-         <summary>Adds a byte to the packet.</summary>
+        /// <summary>Adds a byte to the packet.</summary>
         /// <param name="value">The byte to add.</param>
         public void Write(byte value)
         {
@@ -207,7 +214,6 @@ namespace Network
             {
                 memStream.Position = readPos;
                 var obj = Serializer.Deserialize<T>(memStream);
-                //Debug.Log(obj);
                 return obj;
             }
         }
@@ -382,16 +388,34 @@ namespace Network
 
         /// <summary>Reads a Vector3 from the packet.</summary>
         /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
-        public Vector3 ReadVector3(bool moveReadPos = true)
+        /// <returns> return float[3], index 0 = x, index 1 = y, index 2 = z </returns>
+        public float[] ReadVector3(bool moveReadPos = true)
         {
-            return new Vector3(ReadFloat(moveReadPos), ReadFloat(moveReadPos), ReadFloat(moveReadPos));
+            float[] result = new float[3];
+            float x = ReadFloat(moveReadPos);
+            float y = ReadFloat(moveReadPos);
+            float z = ReadFloat(moveReadPos);
+            result[0] = x;
+            result[1] = y;
+            result[2] = z;
+            return result;
         }
 
         /// <summary>Reads a Quaternion from the packet.</summary>
         /// <param name="moveReadPos">Whether or not to move the buffer's read position.</param>
-        public Quaternion ReadQuaternion(bool moveReadPos = true)
+        /// <returns> return float[4], index 0 = w, index 1 = x, index 2 = y, index 3 = z </returns>
+        public float[] ReadQuaternion(bool moveReadPos = true)
         {
-            return new Quaternion(ReadFloat(moveReadPos), ReadFloat(moveReadPos), ReadFloat(moveReadPos), ReadFloat(moveReadPos));
+            float[] result = new float[4];
+            float w = ReadFloat(moveReadPos);
+            float x = ReadFloat(moveReadPos);
+            float y = ReadFloat(moveReadPos);
+            float z = ReadFloat(moveReadPos);
+            result[0] = w;
+            result[1] = x;
+            result[2] = y;
+            result[3] = z;
+            return result;
         }
         #endregion
 
@@ -415,11 +439,6 @@ namespace Network
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-        }
-
-        public byte[] ToBytes()
-        {
-            return buffer.ToArray();
         }
     }
 }
