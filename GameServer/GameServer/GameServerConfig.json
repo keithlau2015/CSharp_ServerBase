@@ -1,0 +1,12 @@
+{
+  "GameServer": [
+    {
+      "Name": "Account",
+      "TicksPerSec": 60,
+      "TCP": true,
+      "TCPPort": 0,
+      "UDP": true,
+      "UDPPort": 0
+    }
+  ]
+}

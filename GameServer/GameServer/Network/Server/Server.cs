@@ -2,27 +2,47 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
+using System.Threading;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Network
 {
     public class Server
-    {
-        private readonly int DEFAULT_TCP_PORT = 439500;
-        private readonly int DEFAULT_UDP_PORT = 539500;
+    {        
         private TcpListener tcpListener = null;
         private UdpClient udpClient = null;
 
         private CancellationTokenSource tcpCTS, udpCTS;
 
-#region Port
+        public ServerStatus serverStatus;
+
+        #region Port
+        private readonly int DEFAULT_TCP_PORT = 439500;
+        private readonly int DEFAULT_UDP_PORT = 539500;
         private int tcpPort = 0;
         private int udpPort = 0;
-#endregion
+        #endregion
 
-        public Server(int tcpPort = DEFAULT_TCP_PORT, int udpPort = DEFAULT_UDP_PORT)
+        #region Net Client
+        private ConcurrentDictionary<string, NetClient> netClientMap = new ConcurrentDictionary<string, NetClient>();
+        #endregion
+
+        #region Packet Handler
+        public static Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>() {
+            { typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>() }
+        };
+
+        private void ResponseServerStatus(Packet packet)
+        {
+
+        }
+        #endregion
+
+        public Server(int tcpPort = 0, int udpPort = 0)
         {
             //TCP port validation
-            if(tcpPort <= 1024 || tcpListener > 65535 || tcpPort == udpPort || IsPortOccupied(tcpPort))
+            if(tcpPort <= 1024 || tcpPort > 65535 || IsPortOccupied(tcpPort))
                 tcpPort = DEFAULT_TCP_PORT;
 
             //UPD port validation
@@ -52,7 +72,6 @@ namespace Network
         public void StartUDP()
         {
             udpCTS = new CancellationTokenSource();
-            CancellationToken token = udpCTS.token;
             udpClient = new UdpClient(this.udpPort);
             IPEndPoint iPE = new IPEndPoint(IPAddress.Any, tcpPort);
             try
@@ -75,19 +94,18 @@ namespace Network
         public void StartTCP()
         {
             tcpCTS = new CancellationTokenSource();
-            CancellationToken token = tcpCTS.token;
 
             //Get Current Computer Name
             string hostName = Dns.GetHostName();
             //Get Current Computer IP
             IPAddress[] ipa = Dns.GetHostAddresses(hostName);
-            Debug.DebugUtility.Log(this, $"Starting up TCP Lienter IP[{ipa[0]}]");
+            Debug.DebugUtility.DebugLog(this, $"Starting up TCP Lienter IP[{ipa[0]}]");
             
             //Create IP End Point
             IPEndPoint ipe = new IPEndPoint(ipa[0], this.tcpPort);
             tcpListener = new TcpListener(ipe);
             tcpListener.Start();
-            Debug.DebugUtility.Log(this, $"TCP Server Start Up");
+            Debug.DebugUtility.DebugLog(this, $"TCP Server Start Up");
 
             TcpClient tcpClient;
             int numOfClients = 0;
@@ -99,13 +117,21 @@ namespace Network
 
                     if (tcpClient.Connected)
                     {
-                        Debug.DebugUtility.Log(this, "Client Connected!");
+                        Debug.DebugUtility.DebugLog(this, "Client Connected!");
                         NetClient netClient = new NetClient(tcpClient);
-                        Thread myThread = new Thread(new ThreadStart(netClient.Communicate));
+                        if(!netClientMap.TryAdd(netClient.guid.ToString(), netClient))
+                        {
+                            tcpClient.Close();
+                            Debug.DebugUtility.ErrorLog(this, "NetClient add to map failed!");
+                            continue;
+                        }
+
+                        //Create New Thread
+                        Thread clientThread = new Thread(new ThreadStart(async() => { await netClient.Read(); }));
                         numOfClients += 1;
-                        myThread.IsBackground = true;
-                        myThread.Start();
-                        myThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
+                        clientThread.IsBackground = true;
+                        clientThread.Start();
+                        clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
                     }
                 }
                 catch (Exception ex)
@@ -118,12 +144,32 @@ namespace Network
 
         public void Run()
         {
-                        
+            //Init Server Status
+            serverStatus = new ServerStatus(0, "Test Server", (int)ServerStatus.Status.standard, TimeManager.singleton.GetServerTime());
         }
 
         public void ShutDown()
         {
             
+        }
+
+        public void SendPacket(NetClient netClient, Packet packet)
+        {
+            if (netClient == null || packet == null)
+                return;
+            packet.WriteLength();
+            netClient.Send(packet);
+        }
+
+        public void Broadcast(Packet packet)
+        {
+            packet.WriteLength();
+            foreach (NetClient netClient in netClientMap.Values)
+            {
+                if (netClient == null)
+                    continue;
+                netClient.Send(packet);
+            }
         }
     }
 }

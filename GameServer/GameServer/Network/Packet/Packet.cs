@@ -1,9 +1,7 @@
-using Protobuff;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 
 namespace Network
@@ -119,10 +117,12 @@ namespace Network
         /// <returns> a array bytes </returns>
         public static byte[] ObjectToBytes(object obj)
         {
+            if (obj == null)
+                return null;
+
             using (MemoryStream ms = new MemoryStream())
             {
                 byte[] result;
-                BinaryFormatter bf = new BinaryFormatter();
                 Serializer.Serialize(ms, obj);
                 result = ms.ToArray();
                 ms.Flush();

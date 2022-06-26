@@ -1,7 +1,7 @@
 ﻿
 namespace Common
 {
-    public sealed class Singleton<T> where T : new()
+    public abstract class Singleton<T> where T : new()
     {
         private static readonly object locker = new object();
         private static T instance;
