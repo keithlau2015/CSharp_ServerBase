@@ -3,22 +3,35 @@ using System.Threading.Tasks;
 
 namespace Network
 {
-    public class GenericPacketHandler<T> : PacketHandler
+    public class GenericPacketHandler<T> : PacketHandlerBase
     {
-        public GenericPacketHandler():base()
+        private Action<NetClient, T> cb;
+        public GenericPacketHandler(Action<NetClient, T> cb)
         {
-            
+            this.cb = cb;
         }
 
-        public override async Task ReadPacket(NetClient netClient, object obj)
+        public override Task ReadPacket(NetClient netClient, Packet packet)
         {
-            if (typeof(T) != obj.GetType())
+            if(netClient == null || packet == null)
             {
-                Debug.DebugUtility.ErrorLog(this, $"Invalid Type[T => {typeof(T)}, obj => {obj.GetType()}]");
+                Debug.DebugUtility.ErrorLog(this, $"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
             }
 
-            await base.ReadPacket(netClient, obj);
+            if(packet.UnreadLength() == 0)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Packet unreadLength is 0");
+                return;
+            }
+            
+            T obj = packet.ReadObject<T>();
+            if(obj == null)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"obj is null");
+                return;
+            }
+            this.cb?.Invoke(netClient, obj);
         }
     }
 }

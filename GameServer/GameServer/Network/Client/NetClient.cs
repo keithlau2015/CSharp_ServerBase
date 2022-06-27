@@ -45,34 +45,35 @@ namespace Network
             }
         }
 
-        public async Task<Packet> Read()
+        public async Task Read()
         {
-            Packet packet = null;
             byte[] receivedBytes = new byte[tcpClient.ReceiveBufferSize];
             using (NetworkStream stream = tcpClient.GetStream())
             {
                 try
                 {
                     await stream.ReadAsync(receivedBytes, 0, tcpClient.ReceiveBufferSize, receiveCTS.Token);
-                    packet = new Packet(receivedBytes);
-                    //Get Packet Lenght
-                    int packetLength = packet.ReadInt();
-                    //Get Packet ID
-                    string packet_id = packet.ReadString();
-                    PacketHandlerBase packetHandler = null;
-                    if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
+                    using(Packet packet = new Packet(receivedBytes))
                     {
-                        Debug.DebugUtility.ErrorLog(this, $"Invaild Packet ID[{packet_id}]");
-                        return packet;
+                        //Get Packet Lenght
+                        int packetLength = packet.ReadInt();
+                        //Get Packet ID
+                        string packet_id = packet.ReadString();
+                        //Retrieve Packet Handler
+                        PacketHandlerBase packetHandler = null;
+                        if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
+                        {
+                            Debug.DebugUtility.ErrorLog(this, $"Invaild Packet ID[{packet_id}]");
+                            return;
+                        }
+                        await packetHandler.ReadPacket(this, packet);
                     }
-                    await packetHandler.ReadPacket(this, packet);
                 }
                 catch(Exception e)
                 {
                     Debug.DebugUtility.ErrorLog(this, $"ReadMsg: {e}");
                 }
             }
-            return packet;
         }
 
         public void ForceStopSendMsg()
@@ -84,7 +85,6 @@ namespace Network
         public void ForceStopReadMsg()
         {
             receiveCTS.Cancel();
-            tcpClient.ReceiveBufferSize = 0;
         }
     }
 }

@@ -30,13 +30,8 @@ namespace Network
 
         #region Packet Handler
         public static Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>() {
-            { typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>() }
+            { typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus) }
         };
-
-        private void ResponseServerStatus(Packet packet)
-        {
-
-        }
         #endregion
 
         public Server(int tcpPort = 0, int udpPort = 0)
@@ -53,6 +48,7 @@ namespace Network
             this.udpPort = udpPort;
         }
 
+        #region Execute & Terminate
         public static bool IsPortOccupied(int port)
         {
             bool result = false;
@@ -152,18 +148,24 @@ namespace Network
         {
             
         }
-
+        #endregion
+        
+        #region Send Packet
         public void SendPacket(NetClient netClient, Packet packet)
         {
             if (netClient == null || packet == null)
                 return;
-            packet.WriteLength();
             netClient.Send(packet);
         }
 
         public void Broadcast(Packet packet)
         {
-            packet.WriteLength();
+            if(packet == null)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Params Null[packet => {packet == null}]");
+                return;
+            }
+
             foreach (NetClient netClient in netClientMap.Values)
             {
                 if (netClient == null)
@@ -171,5 +173,40 @@ namespace Network
                 netClient.Send(packet);
             }
         }
+
+        public void BroadcastSpecificGrp(List<string> netClientIDList, Packet packet)
+        {
+            if(netClientIDList == null || packet == null)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Params Null[netClientIDList => {netClientIDList == null}, packet => {packet == null}]");
+                return;
+            }
+
+            foreach(string guid in netClientIDList)
+            {
+                NetClient netClient = null;
+                if(!netClientMap.TryGetValue(guid, out netClient))
+                    continue;
+                netClient.Send(packet);
+            }
+        }
+        #endregion
+
+        #region ServerStatus
+        private void ResponseServerStatus(NetClient netClient, Packet packet)
+        {
+            using(Packet response = new Packet("ResponseServerStatus"))
+            {
+                response.Write(this.serverStatus);
+                netClient.Send(response);
+            }            
+        }
+
+        private void UpdateCurrentServerStatus()
+        {
+            if(serverStatus == null)
+                serverStatus = new ServerStatus(0, "", (int)ServerStatus.Status.standard, TimeManager.singleton.GetServerTime());
+        }
+        #endregion
     }
 }
