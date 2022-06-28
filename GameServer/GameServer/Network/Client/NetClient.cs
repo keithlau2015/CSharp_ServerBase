@@ -10,14 +10,11 @@ namespace Network
     {    
         public Guid guid { get; private set; }
         private TcpClient tcpClient;
-        private CancellationTokenSource sendCTS, receiveCTS;
-
+        private bool isAlive { get; private set;}
         public NetClient(TcpClient tcpClient)
         {
             guid = Guid.NewGuid();
             this.tcpClient = tcpClient;
-            sendCTS = new CancellationTokenSource();
-            receiveCTS = new CancellationTokenSource();
         }
 
         ~NetClient()
@@ -25,8 +22,6 @@ namespace Network
             if (tcpClient.Connected)
                 tcpClient.Close();
             tcpClient.Dispose();
-            sendCTS.Dispose();
-            receiveCTS.Dispose();
         }
 
         public async void Send(Packet packet)
@@ -36,7 +31,7 @@ namespace Network
             {
                 try
                 {
-                    await stream.WriteAsync(packet.ToBytes(), 0, packet.ToBytes().Length, sendCTS.Token);
+                    await stream.WriteAsync(packet.ToBytes(), 0, packet.ToBytes().Length);
                 }
                 catch (Exception e)
                 {
@@ -52,7 +47,7 @@ namespace Network
             {
                 try
                 {
-                    await stream.ReadAsync(receivedBytes, 0, tcpClient.ReceiveBufferSize, receiveCTS.Token);
+                    await stream.ReadAsync(receivedBytes, 0, tcpClient.ReceiveBufferSize);
                     using(Packet packet = new Packet(receivedBytes))
                     {
                         //Get Packet Lenght
@@ -74,17 +69,6 @@ namespace Network
                     Debug.DebugUtility.ErrorLog(this, $"ReadMsg: {e}");
                 }
             }
-        }
-
-        public void ForceStopSendMsg()
-        {
-            sendCTS.Cancel();
-            //Send Cancel Error Msg
-        }
-
-        public void ForceStopReadMsg()
-        {
-            receiveCTS.Cancel();
         }
     }
 }

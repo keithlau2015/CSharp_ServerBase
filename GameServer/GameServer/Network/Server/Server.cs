@@ -9,13 +9,13 @@ using System.Collections.Concurrent;
 namespace Network
 {
     public class Server
-    {        
+    {   
+        private const int HEART_BEAT_INTERVAL = 60000;
         private TcpListener tcpListener = null;
-        private UdpClient udpClient = null;
-
-        private CancellationTokenSource tcpCTS, udpCTS;
-
+        private UdpClient udpClient = null;        
         public ServerStatus serverStatus;
+        private int ticks;
+        
 
         #region Port
         private readonly int DEFAULT_TCP_PORT = 439500;
@@ -28,11 +28,8 @@ namespace Network
         private ConcurrentDictionary<string, NetClient> netClientMap = new ConcurrentDictionary<string, NetClient>();
         #endregion
 
-        #region Packet Handler
-        public static Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>() {
-            { typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus) }
-        };
-        #endregion
+        public Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>();
+
 
         public Server(int tcpPort = 0, int udpPort = 0)
         {
@@ -46,6 +43,11 @@ namespace Network
 
             this.tcpPort = tcpPort;
             this.udpPort = udpPort;
+
+            #region Packet Handler
+            packetHandlers.Add("Heartbeat", new GenericPacketHandler<Packet>(PreformHeartBeat));
+            packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
+            #endregion
         }
 
         #region Execute & Terminate
@@ -67,7 +69,6 @@ namespace Network
 
         public void StartUDP()
         {
-            udpCTS = new CancellationTokenSource();
             udpClient = new UdpClient(this.udpPort);
             IPEndPoint iPE = new IPEndPoint(IPAddress.Any, tcpPort);
             try
@@ -89,8 +90,6 @@ namespace Network
 
         public void StartTCP()
         {
-            tcpCTS = new CancellationTokenSource();
-
             //Get Current Computer Name
             string hostName = Dns.GetHostName();
             //Get Current Computer IP
@@ -104,7 +103,6 @@ namespace Network
             Debug.DebugUtility.DebugLog(this, $"TCP Server Start Up");
 
             TcpClient tcpClient;
-            int numOfClients = 0;
             while (true)
             {
                 try
@@ -124,7 +122,6 @@ namespace Network
 
                         //Create New Thread
                         Thread clientThread = new Thread(new ThreadStart(async() => { await netClient.Read(); }));
-                        numOfClients += 1;
                         clientThread.IsBackground = true;
                         clientThread.Start();
                         clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
@@ -192,6 +189,18 @@ namespace Network
         }
         #endregion
 
+        #region Heartbeat
+        private void PreformHeartBeat(NetClient netClient, Packet packet)
+        {
+
+            using(Packet response = new Packet("ResponseHeartbeat"))
+            {
+                netClient.Send(response);
+            }
+        }
+        
+        #endregion
+
         #region ServerStatus
         private void ResponseServerStatus(NetClient netClient, Packet packet)
         {
@@ -202,10 +211,14 @@ namespace Network
             }            
         }
 
-        private void UpdateCurrentServerStatus()
+        private void UpdateCurrentServerStatus(int currentClientNum)
         {
             if(serverStatus == null)
                 serverStatus = new ServerStatus(0, "", (int)ServerStatus.Status.standard, TimeManager.singleton.GetServerTime());
+            
+            int status = (int)ServerStatus.Status.standard;
+
+            serverStatus.UpdateStatus(status);
         }
         #endregion
     }
