@@ -3,8 +3,7 @@ using System;
 using System.Timers;
 using System.Collections;
 public class TimeManager : Singleton<TimeManager>
-{    
-    public Queue timerPool = new Queue();
+{
     public TimeSpan serverTimeModifier;
     public TimeManager()
     {
@@ -21,10 +20,5 @@ public class TimeManager : Singleton<TimeManager>
         DateTime currentTime = DateTime.UtcNow;
         currentTime.Add(serverTimeModifier);
         return ((DateTimeOffset)currentTime).ToUnixTimeSeconds();
-    }
-
-    public Timer GetAvailableTimer()
-    {
-        
     }
 }

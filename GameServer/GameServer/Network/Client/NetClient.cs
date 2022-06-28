@@ -10,7 +10,7 @@ namespace Network
     {    
         public Guid guid { get; private set; }
         private TcpClient tcpClient;
-        private bool isAlive { get; private set;}
+        public bool isAlive { get; private set;}
         public NetClient(TcpClient tcpClient)
         {
             guid = Guid.NewGuid();
@@ -56,7 +56,7 @@ namespace Network
                         string packet_id = packet.ReadString();
                         //Retrieve Packet Handler
                         PacketHandlerBase packetHandler = null;
-                        if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
+                        if (!GameServer.serverMap[0].packetHandlers.TryGetValue(packet_id, out packetHandler))
                         {
                             Debug.DebugUtility.ErrorLog(this, $"Invaild Packet ID[{packet_id}]");
                             return;

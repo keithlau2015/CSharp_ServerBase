@@ -119,6 +119,9 @@ namespace Network
                             Debug.DebugUtility.ErrorLog(this, "NetClient add to map failed!");
                             continue;
                         }
+                        
+                        //Update server status
+                        UpdateCurrentServerStatus();
 
                         //Create New Thread
                         Thread clientThread = new Thread(new ThreadStart(async() => { await netClient.Read(); }));
@@ -192,7 +195,6 @@ namespace Network
         #region Heartbeat
         private void PreformHeartBeat(NetClient netClient, Packet packet)
         {
-
             using(Packet response = new Packet("ResponseHeartbeat"))
             {
                 netClient.Send(response);
@@ -211,13 +213,14 @@ namespace Network
             }            
         }
 
-        private void UpdateCurrentServerStatus(int currentClientNum)
+        private void UpdateCurrentServerStatus()
         {
             if(serverStatus == null)
                 serverStatus = new ServerStatus(0, "", (int)ServerStatus.Status.standard, TimeManager.singleton.GetServerTime());
             
-            int status = (int)ServerStatus.Status.standard;
-
+            ServerStatus.Status status = ServerStatus.Status.standard;
+            if (netClientMap.Count >= 100)
+                status = ServerStatus.Status.crowd;
             serverStatus.UpdateStatus(status);
         }
         #endregion
