@@ -16,17 +16,17 @@ namespace Network
         {
             if(netClient == null || packet == null)
             {
-                Debug.DebugUtility.ErrorLog(this, $"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
+                Debug.DebugUtility.ErrorLog($"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
             }
             if(!netClient.IsAlive)
             {
-                Debug.DebugUtility.ErrorLog(this, $"NetClient not alive");
+                Debug.DebugUtility.ErrorLog($"NetClient not alive");
                 return;
             }
             if(packet.UnreadLength() == 0)
             {
-                Debug.DebugUtility.ErrorLog(this, $"Packet unreadLength is 0");
+                Debug.DebugUtility.ErrorLog($"Packet unreadLength is 0");
                 return;
             }
             using (packet)

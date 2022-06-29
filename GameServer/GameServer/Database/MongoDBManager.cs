@@ -33,19 +33,19 @@ namespace Database
         protected override async void GenericeCURD<T>(Action action, string dbName, string keyField, T obj)
         {
             if (obj == null)
-                Debug.DebugUtility.ErrorLog(this, "obj is NULL");
+                Debug.DebugUtility.ErrorLog("obj is NULL");
 
             IMongoDatabase db = dbClient.GetDatabase(dbName);
             if (db == null)
             {
-                Debug.DebugUtility.ErrorLog(this, $"CURD Invalid DB Name[{dbName}], action {action}");
+                Debug.DebugUtility.ErrorLog($"CURD Invalid DB Name[{dbName}], action {action}");
                 return;
             }
 
             IMongoCollection<T> collection = db.GetCollection<T>(typeof(T).Name);
             if (collection == null)
             {
-                Debug.DebugUtility.ErrorLog(this, $"CRUD Invalid Collection[{typeof(T).Name}], action {action}");
+                Debug.DebugUtility.ErrorLog($"CRUD Invalid Collection[{typeof(T).Name}], action {action}");
                 return;
             }
 
@@ -68,7 +68,7 @@ namespace Database
             }
             else
             {
-                Debug.DebugUtility.ErrorLog(this, "action unknow");
+                Debug.DebugUtility.ErrorLog("unknow action");
             }
         }
     }

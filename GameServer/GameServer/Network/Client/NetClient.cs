@@ -32,7 +32,7 @@ namespace Network
                 }
                 catch (Exception e)
                 {
-                    Debug.DebugUtility.ErrorLog(this, $"SendMsgAsync: {e}");
+                    Debug.DebugUtility.ErrorLog($"SendMsgAsync: {e}");
                 }
             }
         }
@@ -53,9 +53,9 @@ namespace Network
                         string packet_id = packet.ReadString();
                         //Retrieve Packet Handler
                         PacketHandlerBase packetHandler = null;
-                        if (!GameServer.serverMap[0].packetHandlers.TryGetValue(packet_id, out packetHandler))
+                        if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
                         {
-                            Debug.DebugUtility.ErrorLog(this, $"Invaild Packet ID[{packet_id}]");
+                            Debug.DebugUtility.ErrorLog($"Invaild Packet ID[{packet_id}]");
                             return;
                         }
                         await packetHandler.ReadPacket(this, packet);
@@ -63,29 +63,29 @@ namespace Network
                 }
                 catch(Exception e)
                 {
-                    Debug.DebugUtility.ErrorLog(this, $"ReadMsg: {e}");
+                    Debug.DebugUtility.ErrorLog($"ReadMsg: {e}");
                 }
             }
         }
 
-        public void PreformHeartBeat(Server server, Packet packet)
+        public void PreformHeartBeat(Packet packet)
         {            
             LastHeartbeatUnixtimestamp = packet.ReadLong();
             IsAlive = true;
-            Timer timer = new Timer(HEART_BEAT_TIMEOUT);
+            System.Timers.Timer timer = new System.Timers.Timer(HEART_BEAT_TIMEOUT);
             timer.Elapsed += (Object source, ElapsedEventArgs e) => {
-                Disconnect(server);
-                Debug.DebugUtility.DebugLog(this, $"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
+                Disconnect();
+                Debug.DebugUtility.DebugLog($"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
             };
             timer.Enabled = true;
         }
 
-        public void Disconnect(Server server)
+        public void Disconnect()
         {
-            if(server == null)
+            if(Server.netClientMap == null)
                 return;
 
-            server.netClientMap.TryRemove(UID.ToString(), out _);
+            Server.netClientMap.TryRemove(UID.ToString(), out _);
             if(tcpClient != null)
             {
                 tcpClient.Close();
@@ -93,7 +93,7 @@ namespace Network
             }
             LastHeartbeatUnixtimestamp = 0;
             IsAlive = false;
-            Debug.DebugUtility.DebugLog(this, $"NetClient[{UID.ToString()}] Disconnected");
+            Debug.DebugUtility.DebugLog($"NetClient[{UID.ToString()}] Disconnected");
         }
     }
 }

@@ -11,32 +11,32 @@ namespace Network
             this.cb = cb;
         }
 
-        public override Task ReadPacket(NetClient netClient, Packet packet)
+        public override async Task ReadPacket(NetClient netClient, Packet packet)
         {
             if(netClient == null || packet == null)
             {
-                Debug.DebugUtility.ErrorLog(this, $"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
+                Debug.DebugUtility.ErrorLog($"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
             }
             if(!netClient.IsAlive)
             {
-                Debug.DebugUtility.ErrorLog(this, $"NetClient not alive");
+                Debug.DebugUtility.ErrorLog($"NetClient not alive");
                 return;
             }
             if(packet.UnreadLength() == 0)
             {
-                Debug.DebugUtility.ErrorLog(this, $"Packet unreadLength is 0");
+                Debug.DebugUtility.ErrorLog($"Packet unreadLength is 0");
                 return;
             }
             using(packet)
             {
-                T obj = packet.ReadObject<T>();
+                T obj = (T)packet.ReadObject<T>();
                 if(obj == null)
                 {
-                    Debug.DebugUtility.ErrorLog(this, $"obj is null");
+                    Debug.DebugUtility.ErrorLog($"obj is null");
                     return;
                 }
-                this.cb?.Invoke(netClient, obj);
+                await Task.Run(() => { this.cb?.Invoke(netClient, obj); });
             }
         }
     }
