@@ -9,13 +9,16 @@ using System.Collections.Concurrent;
 namespace Network
 {
     public class Server
-    {   
-        private const int HEART_BEAT_INTERVAL = 60000;
+    {        
+        #region CONST
+        private const int MAX_NETCLIENT = 1000;
+        #endregion
+
+        public ServerStatus serverStatus { get; private set; } = null;
+        
         private TcpListener tcpListener = null;
         private UdpClient udpClient = null;        
-        public ServerStatus serverStatus;
-        private int ticks;
-        
+        private CancellationTokenSource tcpCTS, udpCTS;
 
         #region Port
         private readonly int DEFAULT_TCP_PORT = 439500;
@@ -25,14 +28,17 @@ namespace Network
         #endregion
 
         #region Net Client
-        private ConcurrentDictionary<string, NetClient> netClientMap = new ConcurrentDictionary<string, NetClient>();
+        public ConcurrentDictionary<string, NetClient> netClientMap = new ConcurrentDictionary<string, NetClient>();
         #endregion
 
         public Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>();
 
 
-        public Server(int tcpPort = 0, int udpPort = 0)
+        public Server(int id, int grpID, string name, int tcpPort = 0, int udpPort = 0)
         {
+            //Server Status
+            serverStatus = new ServerStatus(id, name, (int)ServerStatus.Status.standard);
+
             //TCP port validation
             if(tcpPort <= 1024 || tcpPort > 65535 || IsPortOccupied(tcpPort))
                 tcpPort = DEFAULT_TCP_PORT;
@@ -43,7 +49,7 @@ namespace Network
 
             this.tcpPort = tcpPort;
             this.udpPort = udpPort;
-
+            
             #region Packet Handler
             packetHandlers.Add("Heartbeat", new GenericPacketHandler<Packet>(PreformHeartBeat));
             packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
@@ -69,26 +75,29 @@ namespace Network
 
         public void StartUDP()
         {
-            udpClient = new UdpClient(this.udpPort);
-            IPEndPoint iPE = new IPEndPoint(IPAddress.Any, tcpPort);
-            try
+            using(udpCTS.Token.Register(() => udpClient.Close()))
             {
-                while (true)
+                udpClient = new UdpClient(this.udpPort);
+                IPEndPoint iPE = new IPEndPoint(IPAddress.Any, tcpPort);
+                try
                 {
+                    while (true)
+                    {
 
+                    }
                 }
-            }
-            catch (SocketException e)
-            {
-                Debug.DebugUtility.ErrorLog(this, $"{e}");
-            }
-            finally
-            {
-                udpClient.Close();
-            }
+                catch (SocketException e)
+                {
+                    Debug.DebugUtility.ErrorLog(this, $"{e}");
+                }
+                finally
+                {
+                    udpClient.Close();
+                }
+            }           
         }
 
-        public void StartTCP()
+        public async void StartTCP()
         {
             //Get Current Computer Name
             string hostName = Dns.GetHostName();
@@ -103,37 +112,39 @@ namespace Network
             Debug.DebugUtility.DebugLog(this, $"TCP Server Start Up");
 
             TcpClient tcpClient;
-            while (true)
+            using(tcpCTS.Token.Register(() => tcpListener.Stop()))
             {
-                try
+                while (!tcpCTS.Token.IsCancellationRequested)
                 {
-                    tcpClient = tcpListener.AcceptTcpClient();
+                    try
+                    {                    
+                        tcpClient = await tcpListener.AcceptTcpClientAsync();
 
-                    if (tcpClient.Connected)
-                    {
-                        Debug.DebugUtility.DebugLog(this, "Client Connected!");
-                        NetClient netClient = new NetClient(tcpClient);
-                        if(!netClientMap.TryAdd(netClient.guid.ToString(), netClient))
+                        if (tcpClient.Connected)
                         {
-                            tcpClient.Close();
-                            Debug.DebugUtility.ErrorLog(this, "NetClient add to map failed!");
-                            continue;
-                        }
-                        
-                        //Update server status
-                        UpdateCurrentServerStatus();
+                            Debug.DebugUtility.DebugLog(this, "Client Connected!");
+                            NetClient netClient = new NetClient(tcpClient);
+                            if(!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
+                            {
+                                tcpClient.Close();
+                                Debug.DebugUtility.ErrorLog(this, "NetClient add to map failed!");
+                                continue;
+                            }
+                            
+                            //Update server status
+                            UpdateCurrentServerStatus();
 
-                        //Create New Thread
-                        Thread clientThread = new Thread(new ThreadStart(async() => { await netClient.Read(); }));
-                        clientThread.IsBackground = true;
-                        clientThread.Start();
-                        clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
+                            //Create New Thread
+                            Thread clientThread = new Thread(new ThreadStart(async() => { await netClient.Read(); }));
+                            clientThread.IsBackground = true;
+                            clientThread.Start();
+                            clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Debug.DebugUtility.ErrorLog(this, ex.Message);
-                    Console.Read();
+                    catch (Exception ex)
+                    {
+                        Debug.DebugUtility.ErrorLog(this, ex.Message);
+                    }
                 }
             }
         }
@@ -195,12 +206,14 @@ namespace Network
         #region Heartbeat
         private void PreformHeartBeat(NetClient netClient, Packet packet)
         {
+            netClient.PreformHeartBeat(this, packet);
             using(Packet response = new Packet("ResponseHeartbeat"))
             {
+                //Current Server Time
+                response.Write(TimeManager.singleton.GetServerTime());
                 netClient.Send(response);
             }
-        }
-        
+        }        
         #endregion
 
         #region ServerStatus
@@ -210,18 +223,23 @@ namespace Network
             {
                 response.Write(this.serverStatus);
                 netClient.Send(response);
-            }            
+            }
         }
 
         private void UpdateCurrentServerStatus()
         {
             if(serverStatus == null)
-                serverStatus = new ServerStatus(0, "", (int)ServerStatus.Status.standard, TimeManager.singleton.GetServerTime());
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Try to update server status, but server status is null");
+                return;
+            }
             
-            ServerStatus.Status status = ServerStatus.Status.standard;
-            if (netClientMap.Count >= 100)
+            int status = serverStatus.CurStatus;
+            if (status <= (int)ServerStatus.crowd && netClientMap.Count >= (int)(MAX_NETCLIENT * 0.9))
+            {
                 status = ServerStatus.Status.crowd;
-            serverStatus.UpdateStatus(status);
+                serverStatus.UpdateStatus((ServerStatus.Status)status);
+            }
         }
         #endregion
     }

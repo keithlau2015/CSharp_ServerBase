@@ -431,7 +431,7 @@ namespace Network
                     readableBuffer = null;
                     readPos = 0;
                 }
-             disposed = true;
+                disposed = true;
             }
         }
 

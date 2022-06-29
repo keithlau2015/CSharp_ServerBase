@@ -18,20 +18,26 @@ namespace Network
                 Debug.DebugUtility.ErrorLog(this, $"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
             }
-
+            if(!netClient.IsAlive)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"NetClient not alive");
+                return;
+            }
             if(packet.UnreadLength() == 0)
             {
                 Debug.DebugUtility.ErrorLog(this, $"Packet unreadLength is 0");
                 return;
             }
-            
-            T obj = packet.ReadObject<T>();
-            if(obj == null)
+            using(packet)
             {
-                Debug.DebugUtility.ErrorLog(this, $"obj is null");
-                return;
+                T obj = packet.ReadObject<T>();
+                if(obj == null)
+                {
+                    Debug.DebugUtility.ErrorLog(this, $"obj is null");
+                    return;
+                }
+                this.cb?.Invoke(netClient, obj);
             }
-            this.cb?.Invoke(netClient, obj);
         }
     }
 }

@@ -1,11 +1,24 @@
 {
-  "GameServer": [
+  "ServerConfig": [
     {
+      "ID": 0,
+      "GrpID": 0,
       "Name": "Account",
-      "TicksPerSec": 60,
-      "TCP": true,
       "TCPPort": 0,
-      "UDP": true,
+      "UDPPort": 0
+    },
+    {
+      "ID": 1,
+      "GrpID": 0,
+      "Name": "Item",
+      "TCPPort": 0,
+      "UDPPort": 0
+    },
+    {
+      "ID": 2,
+      "GrpID": 0,
+      "Name": "",
+      "TCPPort": 0,
       "UDPPort": 0
     }
   ]

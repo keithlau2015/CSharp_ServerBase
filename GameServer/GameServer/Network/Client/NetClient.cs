@@ -3,25 +3,22 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace Network
 {
     public class NetClient
     {    
-        public Guid guid { get; private set; }
+        private const int HEART_BEAT_TIMEOUT = 60000;
+
+        public Guid UID { get; private set; }
         private TcpClient tcpClient;
-        public bool isAlive { get; private set;}
+        public long LastHeartbeatUnixtimestamp { get; private set;}
+        public bool IsAlive { get; private set; }
         public NetClient(TcpClient tcpClient)
         {
-            guid = Guid.NewGuid();
+            UID = Guid.NewGuid();
             this.tcpClient = tcpClient;
-        }
-
-        ~NetClient()
-        {
-            if (tcpClient.Connected)
-                tcpClient.Close();
-            tcpClient.Dispose();
         }
 
         public async void Send(Packet packet)
@@ -69,6 +66,34 @@ namespace Network
                     Debug.DebugUtility.ErrorLog(this, $"ReadMsg: {e}");
                 }
             }
+        }
+
+        public void PreformHeartBeat(Server server, Packet packet)
+        {            
+            LastHeartbeatUnixtimestamp = packet.ReadLong();
+            IsAlive = true;
+            Timer timer = new Timer(HEART_BEAT_TIMEOUT);
+            timer.Elapsed += (Object source, ElapsedEventArgs e) => {
+                Disconnect(server);
+                Debug.DebugUtility.DebugLog(this, $"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
+            };
+            timer.Enabled = true;
+        }
+
+        public void Disconnect(Server server)
+        {
+            if(server == null)
+                return;
+
+            server.netClientMap.TryRemove(UID.ToString(), out _);
+            if(tcpClient != null)
+            {
+                tcpClient.Close();
+                tcpClient = null;
+            }
+            LastHeartbeatUnixtimestamp = 0;
+            IsAlive = false;
+            Debug.DebugUtility.DebugLog(this, $"NetClient[{UID.ToString()}] Disconnected");
         }
     }
 }

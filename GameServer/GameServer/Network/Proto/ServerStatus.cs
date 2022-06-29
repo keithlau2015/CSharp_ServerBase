@@ -5,11 +5,13 @@ public class ServerStatus
 {
     public enum Status : int 
     {
-        offline = -1,
+        //Standard Status
         standard = 0,
         crowd = 1,
+        //Override Status
         recommanded = 2,
-        maintenance = 3,
+        offline = 3,
+        maintenance = 4,
     }
 
     [ProtoMember(1)]
@@ -18,15 +20,12 @@ public class ServerStatus
     public string Name { get; private set; }
     [ProtoMember(3)]
     public int CurStatus { get; private set; }
-    [ProtoMember(4)]
-    public long Unixtimestamp { get; private set; }
 
-    public ServerStatus(int id, string name, int status, long unixtimestamp)
+    public ServerStatus(int id, string name, int status)
     {
         this.ID = id;
         this.Name = name;
         this.CurStatus = status;
-        this.Unixtimestamp = unixtimestamp;
     }
 
     public void UpdateStatus(Status status)

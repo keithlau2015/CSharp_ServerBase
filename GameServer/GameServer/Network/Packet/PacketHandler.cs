@@ -14,9 +14,21 @@ namespace Network
 
         public override async Task ReadPacket(NetClient netClient, Packet packet)
         {
-            if (netClient == null || packet == null)
+            if(netClient == null || packet == null)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
-
+            }
+            if(!netClient.IsAlive)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"NetClient not alive");
+                return;
+            }
+            if(packet.UnreadLength() == 0)
+            {
+                Debug.DebugUtility.ErrorLog(this, $"Packet unreadLength is 0");
+                return;
+            }
             using (packet)
             {
                 foreach (PacketHandlerBase handler in handlers)

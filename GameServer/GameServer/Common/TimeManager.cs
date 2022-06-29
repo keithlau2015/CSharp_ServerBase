@@ -1,6 +1,5 @@
 ﻿using Common;
 using System;
-using System.Timers;
 using System.Collections;
 public class TimeManager : Singleton<TimeManager>
 {
@@ -20,5 +19,11 @@ public class TimeManager : Singleton<TimeManager>
         DateTime currentTime = DateTime.UtcNow;
         currentTime.Add(serverTimeModifier);
         return ((DateTimeOffset)currentTime).ToUnixTimeSeconds();
+    }
+
+    public bool IsInIntervalRange(long lastUnixtimestamp, long interval)
+    {
+        long diff = (lastUnixtimestamp + interval) - GetServerTime();
+        return (diff >= 0);
     }
 }

@@ -2,5 +2,5 @@
 [ProtoContract]
 public class AccountInstance
 {
-
+    
 }
