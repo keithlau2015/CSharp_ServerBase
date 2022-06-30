@@ -9,8 +9,11 @@ namespace Network
 {
     public class NetClient
     {    
+        #region Heartbeat
         private const int HEART_BEAT_TIMEOUT = 60000;
-
+        private System.Timers.Timer heartbeatTimer;
+        #endregion
+        
         public Guid UID { get; private set; }
         private TcpClient tcpClient;
         public long LastHeartbeatUnixtimestamp { get; private set;}
@@ -72,12 +75,15 @@ namespace Network
         {            
             LastHeartbeatUnixtimestamp = packet.ReadLong();
             IsAlive = true;
-            System.Timers.Timer timer = new System.Timers.Timer(HEART_BEAT_TIMEOUT);
-            timer.Elapsed += (Object source, ElapsedEventArgs e) => {
-                Disconnect();
-                Debug.DebugUtility.DebugLog($"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
-            };
-            timer.Enabled = true;
+            if(heartbeatTimer == null)
+            {
+                heartbeatTimer = new System.Timers.Timer(HEART_BEAT_TIMEOUT);
+                heartbeatTimer.Elapsed += (Object source, ElapsedEventArgs e) => {
+                    Disconnect();
+                    Debug.DebugUtility.DebugLog($"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
+                };
+                heartbeatTimer.Enabled = true;
+            }            
         }
 
         public void Disconnect()
@@ -93,6 +99,8 @@ namespace Network
             }
             LastHeartbeatUnixtimestamp = 0;
             IsAlive = false;
+            heartbeatTimer.Enabled = false;
+            heartbeatTimer = null;
             Debug.DebugUtility.DebugLog($"NetClient[{UID.ToString()}] Disconnected");
         }
     }

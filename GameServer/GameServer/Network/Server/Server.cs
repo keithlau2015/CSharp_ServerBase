@@ -18,7 +18,7 @@ namespace Network
         #endregion
         
         private static TcpListener tcpListener = null;
-        private static UdpClient udpClient = null;        
+        private static UdpClient udpListener = null;        
         private static CancellationTokenSource tcpCTS, udpCTS;
 
         #region Port
@@ -37,14 +37,16 @@ namespace Network
 
         public static void Main(string[] args)
         {
-            //Get Config
+            #region Server Config
             IConfigurationRoot config = new ConfigurationBuilder().SetBasePath(AppDomain.CurrentDomain.BaseDirectory).AddJsonFile("ServerConfig.json").Build();
             IConfigurationSection section = config.GetSection(nameof(ServerConfig));
-            ServerConfig serverConfig = section.Get<ServerConfig>();
+            List<ServerConfig> serverConfig = section.Get<List<ServerConfig>>();
+            #endregion
 
-            //Server Status
-            serverStatus = new ServerStatus(serverConfig.ID, "Test", (int)ServerStatus.Status.standard);
+            #region DB connection
+            #endregion
 
+            #region TCP & UDP Init
             //TCP port validation
             if (tcpPort <= 1024 || tcpPort > 65535 || IsPortOccupied(tcpPort))
                 tcpPort = DEFAULT_TCP_PORT;
@@ -58,13 +60,17 @@ namespace Network
 
             tcpCTS = new CancellationTokenSource();
             udpCTS = new CancellationTokenSource();
-
+            #endregion
+            
             #region Packet Handler
             packetHandlers.Add("Heartbeat", new GenericPacketHandler<Packet>(PreformHeartBeat));
             packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
             #endregion
 
-            StartTCP();
+            //Start TCP Listener
+            ThreadPool.QueueUserWorkItem(new WaitCallback(StartTCP), tcpCTS.Token);
+            //Start UDP Listener
+            ThreadPool.QueueUserWorkItem(new WaitCallback(StartUDP), udpCTS.Token);
         }
 
         #region Execute & Terminate
@@ -86,15 +92,18 @@ namespace Network
 
         public void StartUDP()
         {
-            using(udpCTS.Token.Register(() => udpClient.Close()))
+            using(udpCTS.Token.Register(() => udpListener.Close()))
             {
-                udpClient = new UdpClient(udpPort);
-                IPEndPoint iPE = new IPEndPoint(IPAddress.Any, tcpPort);
+                udpListener = new UdpClient(udpPort);
+                IPEndPoint iPE = new IPEndPoint(IPAddress.Any, udpPort);
                 try
                 {
-                    while (true)
+                    while (!udpCTS.Token.IsCancellationRequested)
                     {
-
+                        using(Packet packet = new Packet(await udpListener.ReceiveAsync(udpCTS.Token)))
+                        {
+                            
+                        }
                     }
                 }
                 catch (SocketException e)
@@ -129,7 +138,7 @@ namespace Network
                     await Task.Yield();
                     try
                     {
-                        using (TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync())
+                        using (TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync(tcpCTS.Token))
                         {
                             if (tcpClient.Connected)
                             {
@@ -161,14 +170,18 @@ namespace Network
             }
         }
 
-        public void Run()
+        public static void ShutDown(bool tcp = true, bool udp = true)
         {
-            
-        }
-
-        public void ShutDown()
-        {
-            
+            if(tcp)
+            {
+                if(!tcpCTS.IsCancellationRequested)
+                    tcpCTS.Cancel();
+            }
+            if(udp)
+            {
+                if(!udpCTS.IsCancellationRequested)
+                    udpCTS.Cancel();
+            }
         }
         #endregion
         
