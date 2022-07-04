@@ -8,16 +8,16 @@ using System.Timers;
 namespace Network
 {
     public class NetClient
-    {    
-        #region Heartbeat
-        private const int HEART_BEAT_TIMEOUT = 60000;
-        private System.Timers.Timer heartbeatTimer;
-        #endregion
-        
+    {
         public Guid UID { get; private set; }
         private TcpClient tcpClient;
-        public long LastHeartbeatUnixtimestamp { get; private set;}
-        public bool IsAlive { get; private set; }
+        public bool IsAlive { 
+            get {
+                
+                return tcpClient != null 
+                    && tcpClient.Connected;
+            }
+        }
         public NetClient(TcpClient tcpClient)
         {
             UID = Guid.NewGuid();
@@ -26,12 +26,15 @@ namespace Network
 
         public async void Send(Packet packet)
         {
-            packet.WriteLength();
-            using (NetworkStream stream = tcpClient.GetStream())
+            if (!IsAlive)
+                return;
+
+            using (packet)
             {
+                packet.WriteLength();
                 try
                 {
-                    await stream.WriteAsync(packet.ToBytes(), 0, packet.ToBytes().Length);
+                    await tcpClient.GetStream().WriteAsync(packet.ToBytes(), 0, packet.ToBytes().Length);
                 }
                 catch (Exception e)
                 {
@@ -42,48 +45,37 @@ namespace Network
 
         public async Task Read()
         {
+            if (!IsAlive)
+                return;
+
             byte[] receivedBytes = new byte[tcpClient.ReceiveBufferSize];
-            using (NetworkStream stream = tcpClient.GetStream())
+            try
             {
-                try
+                await tcpClient.GetStream().ReadAsync(receivedBytes, 0, tcpClient.ReceiveBufferSize);
+                if (!tcpClient.GetStream().DataAvailable)
+                    return;
+
+                using (Packet packet = new Packet(receivedBytes))
                 {
-                    await stream.ReadAsync(receivedBytes, 0, tcpClient.ReceiveBufferSize);
-                    using(Packet packet = new Packet(receivedBytes))
+                    //Get Packet Lenght
+                    int packetLength = packet.ReadInt();
+                    //Get Packet ID
+                    string packet_id = packet.ReadString();
+                    //Retrieve Packet Handler
+                    PacketHandlerBase packetHandler = null;
+                    if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
                     {
-                        //Get Packet Lenght
-                        int packetLength = packet.ReadInt();
-                        //Get Packet ID
-                        string packet_id = packet.ReadString();
-                        //Retrieve Packet Handler
-                        PacketHandlerBase packetHandler = null;
-                        if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
-                        {
-                            Debug.DebugUtility.ErrorLog($"Invaild Packet ID[{packet_id}]");
-                            return;
-                        }
-                        await packetHandler.ReadPacket(this, packet);
+                        Debug.DebugUtility.ErrorLog($"Invaild Packet ID[{packet_id}]");
+                        return;
                     }
-                }
-                catch(Exception e)
-                {
-                    Debug.DebugUtility.ErrorLog($"ReadMsg: {e}");
+                    Debug.DebugUtility.DebugLog($"Received Packet ID[{packet_id}]");
+                    await packetHandler.ReadPacket(this, packet);
                 }
             }
-        }
-
-        public void PreformHeartBeat(Packet packet)
-        {            
-            LastHeartbeatUnixtimestamp = packet.ReadLong();
-            IsAlive = true;
-            if(heartbeatTimer == null)
+            catch (Exception e)
             {
-                heartbeatTimer = new System.Timers.Timer(HEART_BEAT_TIMEOUT);
-                heartbeatTimer.Elapsed += (Object source, ElapsedEventArgs e) => {
-                    Disconnect();
-                    Debug.DebugUtility.DebugLog($"Unable receive within Heartbeat Interval range, kick out client[{UID.ToString()}]");
-                };
-                heartbeatTimer.Enabled = true;
-            }            
+                Debug.DebugUtility.ErrorLog($"ReadMsg: {e}");
+            }
         }
 
         public void Disconnect()
@@ -91,16 +83,17 @@ namespace Network
             if(Server.netClientMap == null)
                 return;
 
-            Server.netClientMap.TryRemove(UID.ToString(), out _);
+            if(!Server.netClientMap.TryRemove(UID.ToString(), out _))
+            {
+                Debug.DebugUtility.ErrorLog($"Server.netClientMap {UID.ToString()} not found!");
+            }
+
             if(tcpClient != null)
             {
+                tcpClient.GetStream().Close();
                 tcpClient.Close();
                 tcpClient = null;
             }
-            LastHeartbeatUnixtimestamp = 0;
-            IsAlive = false;
-            heartbeatTimer.Enabled = false;
-            heartbeatTimer = null;
             Debug.DebugUtility.DebugLog($"NetClient[{UID.ToString()}] Disconnected");
         }
     }

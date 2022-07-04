@@ -47,3 +47,4 @@ C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\obj\Debug\net5.
 C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\obj\Debug\net5.0\ref\GameServer.dll
 C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\obj\Debug\net5.0\GameServer.pdb
 C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\obj\Debug\net5.0\GameServer.genruntimeconfig.cache
+C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\bin\Debug\net5.0\Config\appconfig.json

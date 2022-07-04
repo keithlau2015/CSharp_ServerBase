@@ -1,0 +1,70 @@
+2022-07-03 21:28:08 [DEBUG] ipa: 25.67.140.206
+2022-07-03 21:28:08 [DEBUG] ipa: 192.168.1.123
+2022-07-03 21:28:08 [DEBUG] Starting up TCP Lienter IP[25.67.140.206]
+2022-07-03 21:28:08 [DEBUG] TCP Server Start Up [Main]
+2022-07-03 21:28:19 [DEBUG] Client Connected!
+2022-07-03 21:28:29 [DEBUG] Received Packet ID[Heartbeat]
+2022-07-03 21:28:32 [DEBUG] Received Packet ID[Heartbeat]
+2022-07-03 21:38:50 [DEBUG] Client Connected!
+2022-07-03 21:38:53 [DEBUG] Received Packet ID[Heartbeat]
+2022-07-03 21:38:58 [DEBUG] Received Packet ID[Heartbeat]
+2022-07-03 22:10:11 [DEBUG] Client Connected!
+2022-07-03 22:11:26 [DEBUG] Client Connected!
+2022-07-03 22:11:33 [DEBUG] Received Packet ID[Heartbeat]
+2022-07-03 23:01:53 [ERROR] ReadMsg: System.IO.IOException: Unable to read data from the transport connection: 遠端主機已強制關閉一個現存的連線。.
+ ---> System.Net.Sockets.SocketException (10054): 遠端主機已強制關閉一個現存的連線。
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ReceiveAsync(Socket socket, CancellationToken cancellationToken)
+   at System.Net.Sockets.Socket.ReceiveAsync(Memory`1 buffer, SocketFlags socketFlags, Boolean fromNetworkStream, CancellationToken cancellationToken)
+   at System.Net.Sockets.NetworkStream.ReadAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+   at System.IO.Stream.ReadAsync(Byte[] buffer, Int32 offset, Int32 count)
+   at Network.NetClient.Read() in C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\GameServer\Network\Client\NetClient.cs:line 55
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+   at Network.NetClient.Read()
+   at Network.Server.<>c__DisplayClass17_0.<<StartTCP>b__1>d.MoveNext() in C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\GameServer\Network\Server\Server.cs:line 170
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Runtime.CompilerServices.TaskAwaiter.<>c.<OutputWaitEtwEvents>b__12_0(Action innerContinuation, Task innerTask)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.ContinuationWrapper.Invoke()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(Action action, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task.FinishContinuations()
+   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Network.NetClient.Read() in C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\GameServer\Network\Client\NetClient.cs:line 81
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Runtime.CompilerServices.TaskAwaiter.<>c.<OutputWaitEtwEvents>b__12_0(Action innerContinuation, Task innerTask)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.ContinuationWrapper.Invoke()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(Action action, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task.FinishContinuations()
+   at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder.SetResult()
+   at Network.HeartbeatHandler.ReadPacket(NetClient netClient, Packet packet) in C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\GameServer\Network\Packet\HeartbeatHandler.cs:line 34
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+   at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+   at System.Runtime.CompilerServices.TaskAwaiter.<>c.<OutputWaitEtwEvents>b__12_0(Action innerContinuation, Task innerTask)
+   at System.Runtime.CompilerServices.AsyncMethodBuilderCore.ContinuationWrapper.Invoke()
+   at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(Action action, Boolean allowInlining)
+   at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+   at System.Threading.Tasks.Task.FinishContinuations()
+   at System.Threading.Tasks.Task.FinishStageThree()
+   at System.Threading.Tasks.Task.FinishStageTwo()
+   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+   at System.Threading.Tasks.Task.ExecuteEntryUnsafe(Thread threadPoolThread)
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+
+   --- End of inner exception stack trace ---
+   at Network.NetClient.Read() in C:\Users\Keith\Documents\Project\C#\CSharp_ServerBase\GameServer\GameServer\Network\Client\NetClient.cs:line 55

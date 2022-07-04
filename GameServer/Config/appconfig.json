@@ -1,0 +1,12 @@
+{
+  "ServerConfig":
+    {
+      "ID": 0,
+      "Name": "Main",
+      "TCPPort": 45000,
+      "UDPPort": 0,
+      "DatabaseUser": "",
+      "DatabasePw": "",
+      "DebugLevel": 0
+    }
+}

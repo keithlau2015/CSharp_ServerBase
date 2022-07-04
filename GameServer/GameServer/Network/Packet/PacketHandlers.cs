@@ -1,14 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Network
 {
-    public class GenericPacketHandler<T> : PacketHandlerBase
+    public class PacketHandlers : PacketHandlerBase
     {
-        private Action<NetClient, T> cb;
-        public GenericPacketHandler(Action<NetClient, T> cb)
+        protected List<PacketHandlerBase> handlers = new List<PacketHandlerBase>();
+        public PacketHandlers(params PacketHandlerBase[] para):base()
         {
-            this.cb = cb;
+            handlers.AddRange(handlers);
         }
 
         public override async Task ReadPacket(NetClient netClient, Packet packet)
@@ -29,13 +30,10 @@ namespace Network
                 return;
             }
 
-            T obj = (T)packet.ReadObject<T>();
-            if (obj == null)
+            foreach (PacketHandlerBase handler in handlers)
             {
-                Debug.DebugUtility.ErrorLog($"obj is null");
-                return;
+                await handler.ReadPacket(netClient, packet);
             }
-            await Task.Run(() => { this.cb?.Invoke(netClient, obj); });
         }
     }
 }

@@ -1,9 +1,0 @@
-{
-  "ServerConfig": {
-    "ID": 1,
-    "TCPPort": 0,
-    "UDPPort": 0,
-    "DatabaseUser": 0,
-    "DatabasePw": 0
-  }
-}

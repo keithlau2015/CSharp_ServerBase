@@ -42,13 +42,6 @@ namespace Network
 
             SetBytes(data);
         }
-
-        ~Packet()
-        {
-            buffer = null;
-            readableBuffer = null;
-            readPos = 0;
-        }
         #endregion
 
         #region Basic

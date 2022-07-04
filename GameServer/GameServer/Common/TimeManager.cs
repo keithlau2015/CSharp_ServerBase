@@ -14,16 +14,17 @@ public class TimeManager : Singleton<TimeManager>
         serverTimeModifier = timeSpan;
     }
 
-    public long GetServerTime()
+    public long GetServerUnixtimestamp()
     {
         DateTime currentTime = DateTime.UtcNow;
         currentTime.Add(serverTimeModifier);
         return ((DateTimeOffset)currentTime).ToUnixTimeSeconds();
     }
 
-    public bool IsInIntervalRange(long lastUnixtimestamp, long interval)
+    public DateTime GetServerDatetime()
     {
-        long diff = (lastUnixtimestamp + interval) - GetServerTime();
-        return (diff >= 0);
+        DateTime currentTime = DateTime.UtcNow;
+        currentTime.Add(serverTimeModifier);
+        return currentTime;
     }
 }

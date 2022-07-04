@@ -5,9 +5,9 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using Common;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Network
 {
@@ -35,12 +35,16 @@ namespace Network
         //Server Status
         public static ServerStatus serverStatus { get; private set; } = null;
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             #region Server Config
-            IConfigurationRoot config = new ConfigurationBuilder().SetBasePath(AppDomain.CurrentDomain.BaseDirectory).AddJsonFile("ServerConfig.json").Build();
+            IConfigurationRoot config = new ConfigurationBuilder().SetBasePath($"{Directory.GetCurrentDirectory()}/Config").AddJsonFile("appconfig.json").Build();
             IConfigurationSection section = config.GetSection(nameof(ServerConfig));
-            List<ServerConfig> serverConfig = section.Get<List<ServerConfig>>();
+            ServerConfig serverConfig = section.Get<ServerConfig>();
+            #endregion
+
+            #region Init DeugUtility
+            Debug.DebugUtility.Init(serverConfig.DebugLevel);
             #endregion
 
             #region DB connection
@@ -63,14 +67,15 @@ namespace Network
             #endregion
             
             #region Packet Handler
-            packetHandlers.Add("Heartbeat", new GenericPacketHandler<Packet>(PreformHeartBeat));
+            packetHandlers.Add("Heartbeat", new HeartbeatHandler());
             packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
             #endregion
 
+            //Server Status
+            serverStatus = new ServerStatus(serverConfig.ID, serverConfig.Name, (int)ServerStatus.Status.standard);
+
             //Start TCP Listener
-            ThreadPool.QueueUserWorkItem(new WaitCallback(StartTCP), tcpCTS.Token);
-            //Start UDP Listener
-            ThreadPool.QueueUserWorkItem(new WaitCallback(StartUDP), udpCTS.Token);
+            await StartTCP();
         }
 
         #region Execute & Terminate
@@ -89,8 +94,8 @@ namespace Network
             }            
             return result;
         }
-
-        public void StartUDP()
+        /*
+        public async void StartUDP()
         {
             using(udpCTS.Token.Register(() => udpListener.Close()))
             {
@@ -100,7 +105,8 @@ namespace Network
                 {
                     while (!udpCTS.Token.IsCancellationRequested)
                     {
-                        using(Packet packet = new Packet(await udpListener.ReceiveAsync(udpCTS.Token)))
+                        await udpListener.ReceiveAsync(udpCTS.Token)
+                        using (Packet packet = new Packet())
                         {
                             
                         }
@@ -116,20 +122,24 @@ namespace Network
                 }
             }           
         }
-
-        public static async void StartTCP()
+        */
+        public static async Task StartTCP()
         {
             //Get Current Computer Name
             string hostName = Dns.GetHostName();
             //Get Current Computer IP
-            IPAddress[] ipa = Dns.GetHostAddresses(hostName);
+            IPAddress[] ipa = Dns.GetHostAddresses(hostName, AddressFamily.InterNetwork);
+            foreach (IPAddress iPAddress in ipa)
+            {
+                Debug.DebugUtility.DebugLog($"ipa: {iPAddress}");
+            }
             Debug.DebugUtility.DebugLog($"Starting up TCP Lienter IP[{ipa[0]}]");
             
             //Create IP End Point
             IPEndPoint ipe = new IPEndPoint(ipa[0], tcpPort);
             tcpListener = new TcpListener(ipe);
             tcpListener.Start();
-            Debug.DebugUtility.DebugLog($"TCP Server Start Up");
+            Debug.DebugUtility.DebugLog($"TCP Server Start Up [{serverStatus.Name}]");
 
             using(tcpCTS.Token.Register(() => tcpListener.Stop()))
             {
@@ -138,28 +148,31 @@ namespace Network
                     await Task.Yield();
                     try
                     {
-                        using (TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync(tcpCTS.Token))
+                        TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync();
+                        if (tcpClient.Connected)
                         {
-                            if (tcpClient.Connected)
+                            Debug.DebugUtility.DebugLog("Client Connected!");
+                            NetClient netClient = new NetClient(tcpClient);
+                            if (!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
                             {
-                                Debug.DebugUtility.DebugLog("Client Connected!");
-                                NetClient netClient = new NetClient(tcpClient);
-                                if (!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
-                                {
-                                    tcpClient.Close();
-                                    Debug.DebugUtility.ErrorLog("NetClient add to map failed!");
-                                    continue;
-                                }
-
-                                //Update server status
-                                UpdateCurrentServerStatus();
-
-                                //Create New Thread
-                                Thread clientThread = new Thread(new ThreadStart(async () => { await netClient.Read(); }));
-                                clientThread.IsBackground = true;
-                                clientThread.Start();
-                                clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
+                                tcpClient.Close();
+                                Debug.DebugUtility.ErrorLog("NetClient add to map failed!");
+                                continue;
                             }
+
+                            //Update server status
+                            UpdateCurrentServerStatus();
+
+                            //Create New Thread
+                            Thread clientThread = new Thread(new ThreadStart(async () => {
+                                while (netClient.IsAlive)
+                                {
+                                    await netClient.Read();
+                                }
+                            }));
+                            clientThread.IsBackground = true;
+                            clientThread.Start();
+                            clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
                         }
                     }
                     catch (Exception ex)
@@ -227,27 +240,12 @@ namespace Network
         }
         #endregion
 
-        #region Heartbeat
-        private static void PreformHeartBeat(NetClient netClient, Packet packet)
-        {
-            netClient.PreformHeartBeat(packet);
-            using(Packet response = new Packet("ResponseHeartbeat"))
-            {
-                //Current Server Time
-                response.Write(TimeManager.singleton.GetServerTime());
-                netClient.Send(response);
-            }
-        }        
-        #endregion
-
         #region ServerStatus
         private static void ResponseServerStatus(NetClient netClient, Packet packet)
         {
-            using(Packet response = new Packet("ResponseServerStatus"))
-            {
-                response.Write(serverStatus);
-                netClient.Send(response);
-            }
+            Packet response = new Packet("ResponseServerStatus");
+            response.Write(serverStatus);
+            netClient.Send(response);
         }
 
         private static void UpdateCurrentServerStatus()
