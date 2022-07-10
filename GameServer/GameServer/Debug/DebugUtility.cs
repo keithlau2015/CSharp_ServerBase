@@ -19,7 +19,7 @@ namespace Debug
                 Init();
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"[{TimeManager.singleton.GetServerDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
+            Console.WriteLine($"[{TimeManager.singleton.GetCurrentDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
 
             logger.Debug(contents);
         }
@@ -33,7 +33,7 @@ namespace Debug
                 Init();
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[{TimeManager.singleton.GetServerDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
+            Console.WriteLine($"[{TimeManager.singleton.GetCurrentDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
 
             logger.Warn(contents);
         }
@@ -47,7 +47,7 @@ namespace Debug
                 Init();
 
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[{TimeManager.singleton.GetServerDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
+            Console.WriteLine($"[{TimeManager.singleton.GetCurrentDatetime().ToString("MM/dd/yyyy HH:mm")}]: {contents}");
 
             logger.Error(contents);
         }

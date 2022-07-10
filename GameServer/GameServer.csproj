@@ -19,5 +19,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="GameServer\GameSystem\Item\" />
+    <Folder Include="GameServer\GameSystem\Record\" />
+  </ItemGroup>
     
 </Project>

@@ -20,11 +20,6 @@ namespace Network
                 Debug.DebugUtility.ErrorLog($"NetClient not alive");
                 return;
             }
-            if (packet.UnreadLength() == 0)
-            {
-                Debug.DebugUtility.ErrorLog($"Packet unreadLength is 0");
-                return;
-            }
 
             await Task.Run(() => {
                 Packet response = new Packet("ResponseHeartbeat");

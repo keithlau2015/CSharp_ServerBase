@@ -9,7 +9,7 @@ namespace Network
     /// <summary>
     /// Handle Encoding & Encryption
     /// </summary>
-    public class Packet : IDisposable
+    public class Packet
     {
         private List<byte> buffer;
         private byte[] readableBuffer;
@@ -412,6 +412,7 @@ namespace Network
         }
         #endregion
 
+        /*
         private bool disposed = false;
         
         protected virtual void Dispose(bool disposing)
@@ -433,5 +434,6 @@ namespace Network
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+        */
     }
 }

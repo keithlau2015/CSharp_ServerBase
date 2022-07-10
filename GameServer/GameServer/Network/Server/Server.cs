@@ -15,6 +15,7 @@ namespace Network
     {        
         #region CONST
         private const int MAX_NETCLIENT = 1000;
+        private const int CHECK_TIMEOUT_INTERVAL = 300;
         #endregion
         
         private static TcpListener tcpListener = null;
@@ -30,8 +31,11 @@ namespace Network
 
         //Net Client
         public static ConcurrentDictionary<string, NetClient> netClientMap = new ConcurrentDictionary<string, NetClient>();
+        public static ConcurrentDictionary<string, NetClient> timeoutPendingNetClientMap = new ConcurrentDictionary<string, NetClient>();
+
         //Packet Handler
         public static Dictionary<string, PacketHandlerBase> packetHandlers = new Dictionary<string, PacketHandlerBase>();
+
         //Server Status
         public static ServerStatus serverStatus { get; private set; } = null;
 
@@ -129,11 +133,23 @@ namespace Network
             string hostName = Dns.GetHostName();
             //Get Current Computer IP
             IPAddress[] ipa = Dns.GetHostAddresses(hostName, AddressFamily.InterNetwork);
-            foreach (IPAddress iPAddress in ipa)
+            int publicIpaIndex = 0;
+            for (int i = 0; i < ipa.Length; i++)
             {
-                Debug.DebugUtility.DebugLog($"ipa: {iPAddress}");
+                IPAddress iPAddress = ipa[i];
+
+                //validation for public ip
+                string[] ipAddressSplit = iPAddress.ToString().Split('.');
+                if (ipAddressSplit.Length == 0)
+                    continue;
+
+                if (ipAddressSplit[0].Trim().Equals("192"))
+                    continue;
+
+                publicIpaIndex = i;
+                break;                
             }
-            Debug.DebugUtility.DebugLog($"Starting up TCP Lienter IP[{ipa[0]}]");
+            //Debug.DebugUtility.DebugLog($"Starting up TCP Lienter IP[{ipa[publicIpaIndex]}]");
             
             //Create IP End Point
             IPEndPoint ipe = new IPEndPoint(ipa[0], tcpPort);
@@ -261,6 +277,23 @@ namespace Network
             {
                 status = (int)ServerStatus.Status.crowd;
                 serverStatus.UpdateStatus((ServerStatus.Status)status);
+            }
+        }
+        #endregion
+
+        #region Time out netClient
+        private void KickoutTimeoutNetClient()
+        {
+            foreach(NetClient netClient in netClientMap.Values)
+            {
+                if(netClient == null)
+                {
+                    netClientMap.TryRemove(netClient.UID.ToString(), out _);
+                    continue;
+                }
+
+                if (!netClient.IsAlive)
+                    netClient.Disconnect();
             }
         }
         #endregion
