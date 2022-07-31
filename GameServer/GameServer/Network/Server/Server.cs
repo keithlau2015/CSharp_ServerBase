@@ -73,6 +73,7 @@ namespace Network
             #region Packet Handler
             packetHandlers.Add("Heartbeat", new HeartbeatHandler());
             packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
+
             #endregion
 
             //Server Status
