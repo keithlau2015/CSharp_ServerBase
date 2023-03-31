@@ -22,9 +22,11 @@ namespace Network
             }
 
             await Task.Run(() => {
-                Packet response = new Packet("ResponseHeartbeat");
-                //Current Server Time
-                netClient.Send(response);
+                using (Packet response = new Packet("ResponseHeartbeat"))
+                {
+                    //Current Server Time
+                    netClient.TCPSend(response);
+                }
             });
         }
     }
