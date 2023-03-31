@@ -8,6 +8,8 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using System.IO;
+using System.Text;
+using System.Net.Http;
 
 namespace Network
 {
@@ -79,57 +81,6 @@ namespace Network
             //Server Status
             serverStatus = new ServerStatus(serverConfig.ID, serverConfig.Name, (int)ServerStatus.Status.standard);
 
-            //Start TCP Listener
-            await StartTCP();
-        }
-
-        #region Execute & Terminate
-        public static bool IsPortOccupied(int port)
-        {
-            bool result = false;
-            IPGlobalProperties ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-            TcpConnectionInformation[] tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
-            foreach (TcpConnectionInformation tcpi in tcpConnInfoArray)
-            {
-                if (tcpi.LocalEndPoint.Port==port)
-                {
-                    result = true;
-                    break;
-                }
-            }            
-            return result;
-        }
-        /*
-        public async void StartUDP()
-        {
-            using(udpCTS.Token.Register(() => udpListener.Close()))
-            {
-                udpListener = new UdpClient(udpPort);
-                IPEndPoint iPE = new IPEndPoint(IPAddress.Any, udpPort);
-                try
-                {
-                    while (!udpCTS.Token.IsCancellationRequested)
-                    {
-                        await udpListener.ReceiveAsync(udpCTS.Token)
-                        using (Packet packet = new Packet())
-                        {
-                            
-                        }
-                    }
-                }
-                catch (SocketException e)
-                {
-                    Debug.DebugUtility.ErrorLog($"{e}");
-                }
-                finally
-                {
-                    udpClient.Close();
-                }
-            }           
-        }
-        */
-        public static async Task StartTCP()
-        {
             //Get Current Computer Name
             string hostName = Dns.GetHostName();
             //Get Current Computer IP
@@ -148,56 +99,144 @@ namespace Network
                     continue;
 
                 publicIpaIndex = i;
-                break;                
+                break;
             }
             //Debug.DebugUtility.DebugLog($"Starting up TCP Lienter IP[{ipa[publicIpaIndex]}]");
-            
-            //Create IP End Point
-            IPEndPoint ipe = new IPEndPoint(ipa[0], tcpPort);
-            tcpListener = new TcpListener(ipe);
+
+            //Init TCP
+            IPEndPoint tcpIPE = new IPEndPoint(ipa[0], tcpPort);
+            tcpListener = new TcpListener(tcpIPE);
             tcpListener.Start();
-            Debug.DebugUtility.DebugLog($"TCP Server Start Up [{serverStatus.Name}]");
+            Debug.DebugUtility.DebugLog($"TCP Server Start Up [{serverStatus.Name}] With Port [{tcpPort}]");
+            //Init UDP
+            IPEndPoint udpIPE = new IPEndPoint(ipa[0], udpPort);
+            udpListener = new UdpClient(udpIPE);
+            Debug.DebugUtility.DebugLog($"UDP Server Start Up [{serverStatus.Name}] With Port [{udpPort}]");
 
-            using(tcpCTS.Token.Register(() => tcpListener.Stop()))
+            while (true)
             {
-                while (!tcpCTS.Token.IsCancellationRequested)
+                #region Start TCP Protocol
+                using (tcpCTS.Token.Register(() => tcpListener.Stop()))
                 {
-                    await Task.Yield();
-                    try
+                    if (!tcpCTS.Token.IsCancellationRequested)
                     {
-                        TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync();
-                        if (tcpClient.Connected)
+                        await Task.Yield();
+                        try
                         {
-                            Debug.DebugUtility.DebugLog("Client Connected!");
-                            NetClient netClient = new NetClient(tcpClient);
-                            if (!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
+                            TcpClient tcpClient = await tcpListener.AcceptTcpClientAsync();
+                            if (tcpClient.Connected)
                             {
-                                tcpClient.Close();
-                                Debug.DebugUtility.ErrorLog("NetClient add to map failed!");
-                                continue;
-                            }
+                                Debug.DebugUtility.DebugLog("TCP Client Connected!");
 
-                            //Update server status
-                            UpdateCurrentServerStatus();
-
-                            //Create New Thread
-                            Thread clientThread = new Thread(new ThreadStart(async () => {
-                                while (netClient.IsAlive)
+                                NetClient netClient = new NetClient();
+                                if(!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
                                 {
-                                    await netClient.Read();
+                                    Debug.DebugUtility.WarningLog("TCP Client failed to cache!");
+                                    continue;
                                 }
-                            }));
-                            clientThread.IsBackground = true;
-                            clientThread.Start();
-                            clientThread.Name = tcpClient.Client.RemoteEndPoint.ToString();
+
+                                //Update server status
+                                UpdateCurrentServerStatus();
+
+                                //Create New Thread
+                                Thread clientThread = new Thread(new ThreadStart(() =>
+                                {
+                                    while (netClient.isAlive)
+                                    {
+                                        netClient.Read();
+                                    }
+                                    //If netClient is not alive
+                                    netClient.Disconnect();
+                                }));
+                                clientThread.IsBackground = true;
+                                clientThread.Start();
+                                clientThread.Name = $"{netClient.UID.ToString()}_TCP";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.DebugUtility.ErrorLog(ex.Message);
                         }
                     }
-                    catch (Exception ex)
+                }
+                #endregion
+
+                #region Start UDP Protocol
+                using (udpCTS.Token.Register(() => udpListener.Close()))
+                {
+                    if (!udpCTS.Token.IsCancellationRequested)
                     {
-                        Debug.DebugUtility.ErrorLog(ex.Message);
+                        await Task.Yield();                        
+                        try
+                        {
+                            if (!udpCTS.Token.IsCancellationRequested)
+                            {
+                                UdpReceiveResult udpReceiveResult = await udpListener.ReceiveAsync(udpCTS.Token);
+                                if (udpReceiveResult.Buffer.Length < 4)
+                                    continue;
+
+                                string clientUID = "";
+                                using (Packet packet = new Packet(udpReceiveResult.Buffer))
+                                {
+                                    //Get Packet Lenght
+                                    int packetLength = packet.ReadInt();
+                                    //Get Packet ID
+                                    string packet_id = packet.ReadString();
+                                    
+                                    clientUID = packet.ReadString();
+                                }
+
+                                NetClient netClient = null;
+                                if (!netClientMap.TryGetValue(clientUID, out netClient))
+                                    continue;
+
+                                //Update server status
+                                UpdateCurrentServerStatus();
+
+                                //Create New Thread
+                                Thread clientThread = new Thread(new ThreadStart(() =>
+                                {
+                                    while (netClient.isAlive)
+                                    {
+                                        netClient.Read(supportProtocol: NetClient.SupportProtocol.UDP);
+                                    }
+                                    //If netClient is not alive
+                                    netClient.Disconnect();
+                                }));
+                                clientThread.IsBackground = true;
+                                clientThread.Start();
+                                clientThread.Name = $"{netClient.UID.ToString()}_UDP";
+                            }
+                        }
+                        catch (SocketException e)
+                        {
+                            Debug.DebugUtility.ErrorLog($"{e}");
+                        }
+                        finally
+                        {
+                            udpListener.Close();
+                        }
                     }
                 }
+                #endregion
             }
+        }
+
+        #region Execute & Terminate
+        public static bool IsPortOccupied(int port)
+        {
+            bool result = false;
+            IPGlobalProperties ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+            TcpConnectionInformation[] tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
+            foreach (TcpConnectionInformation tcpi in tcpConnInfoArray)
+            {
+                if (tcpi.LocalEndPoint.Port==port)
+                {
+                    result = true;
+                    break;
+                }
+            }            
+            return result;
         }
 
         public static void ShutDown(bool tcp = true, bool udp = true)
@@ -260,9 +299,11 @@ namespace Network
         #region ServerStatus
         private static void ResponseServerStatus(NetClient netClient, Packet packet)
         {
-            Packet response = new Packet("ResponseServerStatus");
-            response.Write(serverStatus);
-            netClient.Send(response);
+            using (Packet response = new Packet("ResponseServerStatus"))
+            {
+                response.Write(serverStatus);
+                netClient.Send(response);
+            }
         }
 
         private static void UpdateCurrentServerStatus()
@@ -293,7 +334,7 @@ namespace Network
                     continue;
                 }
 
-                if (!netClient.IsAlive)
+                if (!netClient.isAlive)
                     netClient.Disconnect();
             }
         }
