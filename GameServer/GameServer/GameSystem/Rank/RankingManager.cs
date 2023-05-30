@@ -7,10 +7,7 @@ using System.Threading.Tasks;
 
 public class RankingManager : Singleton<RankingManager>
 {
-    #region INS
     public Dictionary<int, List<string>> rankingMap = new Dictionary<int, List<string>>();
-    #endregion
-
     public event Action onRankChange;
 
     public void UpdateRankingInstance(int rankID)

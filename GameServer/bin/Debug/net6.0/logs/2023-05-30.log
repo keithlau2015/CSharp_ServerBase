@@ -1,0 +1,4 @@
+2023-05-30 07:36:15 [DEBUG] TCP Server Start Up [Main] With Port [45000]
+2023-05-30 07:36:15 [DEBUG] UDP Server Start Up [Main] With Port [0]
+2023-05-30 07:36:22 [DEBUG] TCP Client Connected!
+2023-05-30 07:36:22 [ERROR] Object reference not set to an instance of an object.

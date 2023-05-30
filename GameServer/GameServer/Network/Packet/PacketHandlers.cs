@@ -19,7 +19,7 @@ namespace Network
                 Debug.DebugUtility.ErrorLog($"Params Null[NetClient => {netClient == null}, packet => {packet == null}]");
                 return;
             }
-            if(!netClient.IsAlive)
+            if(!netClient.isAlive)
             {
                 Debug.DebugUtility.ErrorLog($"NetClient not alive");
                 return;

@@ -18,10 +18,8 @@ public class AccountInstance
     public string AvatarIcon { get; private set; }
     [ProtoMember(7)]
     public string AvatarFrame { get; private set; }
-    [ProtoMember(8)]
-    public bool isLocal { get; private set; }
 
-    public AccountInstance(string nickName, string password, string defaultAvatarIcon, string defaultAvatarFrame, bool isLocal)
+    public AccountInstance(string nickName, string password, string defaultAvatarIcon, string defaultAvatarFrame)
     {
         this.UID = Guid.NewGuid().ToString();
         this.Nickname = nickName;
@@ -30,7 +28,6 @@ public class AccountInstance
         this.LastLoginTime = TimeManager.singleton.GetCurrentUnixtimestamp();
         this.AvatarIcon = defaultAvatarIcon;
         this.AvatarFrame = defaultAvatarFrame;
-        this.isLocal = isLocal;
     }
 
     public void Login()
