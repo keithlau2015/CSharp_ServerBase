@@ -129,6 +129,7 @@ namespace Network
                                 Debug.DebugUtility.DebugLog("TCP Client Connected!");
 
                                 NetClient netClient = new NetClient();
+                                netClient.tcProtocol.SetUp(tcpClient);
                                 if(!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
                                 {
                                     Debug.DebugUtility.WarningLog("TCP Client failed to cache!");

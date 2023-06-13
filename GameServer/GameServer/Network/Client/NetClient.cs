@@ -16,8 +16,8 @@ namespace Network
         }
 
         public Guid UID { get; private set; }
-        private TCProtocol tcProtocol;
-        private UDProtocol udProtocol;
+        public TCProtocol tcProtocol { get; private set; }
+        public UDProtocol udProtocol { get; private set; }
         public bool isAlive
         {
             get
@@ -48,7 +48,12 @@ namespace Network
             }
             public TCProtocol(NetClient netClient)
             {
-                this.client = netClient;
+                this.client = netClient;                
+            }
+
+            public void SetUp(TcpClient tcpClient)
+            {
+                this.tcpClient = tcpClient;
                 this.receiveBuffer = new byte[DATA_BUFFER_SIZE];
                 this.tcpClient.ReceiveBufferSize = DATA_BUFFER_SIZE;
                 this.tcpClient.SendBufferSize = DATA_BUFFER_SIZE;

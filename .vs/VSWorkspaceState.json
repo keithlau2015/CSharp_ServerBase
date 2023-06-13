@@ -1,9 +1,10 @@
 {
   "ExpandedNodes": [
     "",
-    "\\Database",
-    "\\Debug",
-    "\\Network"
+    "\\GameServer",
+    "\\GameServer\\GameServer",
+    "\\GameServer\\GameServer\\Common"
   ],
+  "SelectedNode": "\\GameServer\\GameServer\\Common\\Singleton.cs",
   "PreviewInSolutionExplorer": false
 }
