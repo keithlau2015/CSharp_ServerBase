@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Database
 {
-    public class MongoDBManager : DatabaseManagerBase
+    public class MongoDBManager : DatabaseBase
     {
         private MongoClient dbClient;
         public MongoDBManager(string url)
