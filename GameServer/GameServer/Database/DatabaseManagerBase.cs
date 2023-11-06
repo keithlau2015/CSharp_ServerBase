@@ -2,7 +2,7 @@ using System.Threading;
 
 namespace Database
 {
-    public abstract class DatabaseManagerBase
+    public abstract class DatabaseBase
     {
         public enum Action : int
         {
