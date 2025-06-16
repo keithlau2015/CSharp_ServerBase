@@ -238,8 +238,59 @@ public class GameServer
 }
 ```
 
+## 🔥 Network & Unity Integration
+
+### Standalone Executable for Unity
+```bash
+# Build cross-platform executables
+build_executable.bat        # Windows
+./build_executable.sh       # Linux/Mac
+
+# Run with network configuration
+GameServer.exe --configure-firewall --show-port-forwarding
+```
+
+### Unity Integration
+```csharp
+// Add GameServerManager to Unity GameObject
+public class GameManager : MonoBehaviour
+{
+    private GameServerManager serverManager;
+
+    void Start()
+    {
+        serverManager = FindObjectOfType<GameServerManager>();
+        serverManager.OnServerStarted += OnServerReady;
+        serverManager.StartServer(); // Launches GameServer.exe
+    }
+    
+    private void OnServerReady()
+    {
+        Debug.Log("🎮 Server is ready for connections!");
+        // Connect your game clients
+    }
+}
+```
+
+### Command Line Options
+```bash
+# Basic usage
+GameServer.exe
+
+# Network configuration
+GameServer.exe --port 8080 --configure-firewall --show-port-forwarding
+
+# Unity integration
+GameServer.exe --port 8080 --maxplayers 500 --no-firewall
+
+# Database selection
+GameServer.exe --database EncryptedBinary --datadir "./GameData"
+```
+
 ## 📚 Documentation
 
+- **[Unity Integration Guide](GameServer/Unity_Integration/Unity_Integration_Guide.md)** - Complete Unity setup
+- **[Network Troubleshooting](GameServer/Network_Troubleshooting_Guide.md)** - Firewall, ports, permissions
 - **[EventScheduler Documentation](GameServer/GameServer/Utility/EventScheduler_README.md)** - Comprehensive scheduling guide
 - **[Database Examples](GameServer/GameServer/Database/DatabaseExample.cs)** - Database usage examples
 - **[Server Integration](GameServer/GameServer/Utility/ServerStartupExample.cs)** - Complete server setup

@@ -23,6 +23,11 @@ namespace GameServer.Unity
         [SerializeField] private bool autoStartOnAwake = true;
         [SerializeField] private bool autoStopOnDestroy = true;
         
+        [Header("Network Configuration")]
+        [SerializeField] private bool configureFirewall = false;
+        [SerializeField] private bool showPortForwarding = false;
+        [SerializeField] private bool autoDetectPort = true;
+        
         [Header("Monitoring")]
         [SerializeField] private float healthCheckInterval = 5f;
         [SerializeField] private bool showServerConsole = true;
@@ -261,11 +266,27 @@ namespace GameServer.Unity
 
         private string BuildCommandLineArguments()
         {
-            return $"--port {serverPort} " +
-                   $"--maxplayers {maxPlayers} " +
-                   $"--database {databaseType} " +
-                   $"--datadir \"{dataDirectory}\" " +
-                   $"--key \"{encryptionKey}\"";
+            string args = $"--port {serverPort} " +
+                         $"--maxplayers {maxPlayers} " +
+                         $"--database {databaseType} " +
+                         $"--datadir \"{dataDirectory}\" " +
+                         $"--key \"{encryptionKey}\"";
+
+            if (configureFirewall)
+            {
+                args += " --configure-firewall";
+            }
+            else
+            {
+                args += " --no-firewall";
+            }
+
+            if (showPortForwarding)
+            {
+                args += " --show-port-forwarding";
+            }
+
+            return args;
         }
 
         private async Task MonitorServerProcessAsync()
