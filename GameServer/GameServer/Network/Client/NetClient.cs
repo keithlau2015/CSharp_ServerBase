@@ -77,11 +77,17 @@ namespace Network
 
             public async Task Read()
             {
-                if (tcpClient == null || !tcpClient.Connected || tcpClient.Available == 0)
+                if (tcpClient == null || !tcpClient.Connected)
                     return;
+
                 try
                 {
-                    int byteLength = tcpClient.GetStream().Read(receiveBuffer, 0, DATA_BUFFER_SIZE);
+                    NetworkStream stream = tcpClient.GetStream();
+                    if (!stream.CanRead || !stream.DataAvailable)
+                        return;
+
+                    // Use ReadAsync instead of Read for better async handling
+                    int byteLength = await stream.ReadAsync(receiveBuffer, 0, DATA_BUFFER_SIZE);
                     if (byteLength <= 0)
                         return;
 
@@ -93,24 +99,66 @@ namespace Network
 
                     using (Packet packet = new Packet(receiveData))
                     {
-                        //Get Packet Lenght
+                        // Validate packet has minimum required data
+                        if (packet.UnreadLength() < 4)
+                        {
+                            Debug.DebugUtility.WarningLog("Received packet too small to contain length");
+                            return;
+                        }
+
+                        //Get Packet Length
                         int packetLength = packet.ReadInt();
+                        
+                        // Validate packet length
+                        if (packetLength <= 0 || packetLength > DATA_BUFFER_SIZE)
+                        {
+                            Debug.DebugUtility.ErrorLog($"Invalid packet length: {packetLength}");
+                            return;
+                        }
+
+                        // Check if we have enough data for packet ID
+                        if (packet.UnreadLength() < 4) // Assuming string length is at least 4 bytes
+                        {
+                            Debug.DebugUtility.WarningLog("Packet too small to contain packet ID");
+                            return;
+                        }
+
                         //Get Packet ID
                         string packet_id = packet.ReadString();
+                        
+                        if (string.IsNullOrEmpty(packet_id))
+                        {
+                            Debug.DebugUtility.ErrorLog("Received packet with empty or null packet ID");
+                            return;
+                        }
+
                         //Retrieve Packet Handler
                         PacketHandlerBase packetHandler = null;
                         if (!Server.packetHandlers.TryGetValue(packet_id, out packetHandler))
                         {
-                            Debug.DebugUtility.ErrorLog($"Invaild Packet ID[{packet_id}]");
+                            Debug.DebugUtility.ErrorLog($"Invalid Packet ID[{packet_id}]");
                             return;
                         }
+                        
                         Debug.DebugUtility.DebugLog($"Received Packet ID[{packet_id}]");
                         await packetHandler.ReadPacket(client, packet);
                     }
                 }
-                catch (Exception e)
+                catch (System.IO.IOException ioEx)
                 {
-                    Debug.DebugUtility.ErrorLog($"ReadMsg: {e}");
+                    Debug.DebugUtility.WarningLog($"Network I/O error (client likely disconnected): {ioEx.Message}");
+                    // Mark client for disconnection
+                    tcpClient?.Close();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Client already disposed, ignore
+                    Debug.DebugUtility.DebugLog("TCP client already disposed");
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.ErrorLog($"TCP Read error: {ex.Message}");
+                    // Don't rethrow, just log and continue
                 }
             }
 

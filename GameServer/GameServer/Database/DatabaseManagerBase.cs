@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Database
 {
@@ -12,9 +13,9 @@ namespace Database
             Delete = 4
         }
 
-        public abstract void CRUD_Config<T>(Action action, string dbName, T obj);
-        public abstract void CRUD_Instance<T>(Action action, string dbName, T obj);
-        public abstract void CRUD_Log<T>(Action action, string dbName, T obj);
-        protected abstract void GenericeCURD<T>(Action action, string dbName, string key, T obj);
+        public abstract Task CRUD_Config<T>(Action action, string dbName, T obj);
+        public abstract Task CRUD_Instance<T>(Action action, string dbName, T obj);
+        public abstract Task CRUD_Log<T>(Action action, string dbName, T obj);
+        protected abstract Task GenericeCURDAsync<T>(Action action, string dbName, string key, T obj);
     }
 }

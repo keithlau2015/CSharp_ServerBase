@@ -1,28 +1,18 @@
-﻿
+﻿using System;
+
 namespace Common
 {
-    public abstract class Singleton<T> where T : new()
+    public abstract class Singleton<T> where T : class, new()
     {
-        private static readonly object locker = new object();
-        private static T instance;
+        // Use Lazy<T> for thread-safe lazy initialization
+        private static readonly Lazy<T> _instance = new Lazy<T>(() => new T());
 
-        public static T singleton
-        {
-            get
-            {
-                if(instance == null)
-                {
-                    lock (locker)
-                    {
-                        if (instance == null)
-                        {
-                            instance = new T();
-                        }
-                    }
-                }
+        public static T Instance => _instance.Value;
 
-                return instance;
-            }
-        }
+        // Keep the old property name for backward compatibility
+        public static T singleton => Instance;
+
+        // Prevent external instantiation
+        protected Singleton() { }
     }
 }

@@ -4,9 +4,9 @@
       "ID": 0,
       "Name": "Main",
       "TCPPort": 45000,
-      "UDPPort": 0,
+      "UDPPort": 45001,
       "DatabaseUser": "",
       "DatabasePw": "",
-      "DebugLevel": 0
+      "DebugLevel": 1
     }
 }
