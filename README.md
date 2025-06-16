@@ -305,7 +305,7 @@ GameServer/
 
 ### Building from Source
 ```bash
-git clone https://github.com/your-username/CSharp_ServerBase.git
+git clone https://github.com/keithlau2015/CSharp_ServerBase.git
 cd CSharp_ServerBase/GameServer
 dotnet restore
 dotnet build --configuration Release
