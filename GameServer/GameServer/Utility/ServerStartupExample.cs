@@ -16,11 +16,28 @@ namespace GameServer
         private EventSchedulerExample _schedulerExample;
         private DatabaseBase _database;
         private CancellationTokenSource _cancellationTokenSource;
+        private ServerConfig _config;
 
         public async Task StartServer()
         {
+            var defaultConfig = new ServerConfig
+            {
+                Port = 8080,
+                MaxPlayers = 100,
+                DatabaseType = "EncryptedBinary",
+                DataDirectory = "./GameData",
+                EncryptionKey = "DefaultGameServerKey2024!",
+                AutoStart = true
+            };
+            
+            await StartServerWithConfig(defaultConfig);
+        }
+
+        public async Task StartServerWithConfig(ServerConfig config)
+        {
             try
             {
+                _config = config;
                 Debug.DebugUtility.DebugLog("=== Starting Game Server ===");
                 
                 _cancellationTokenSource = new CancellationTokenSource();
@@ -50,10 +67,18 @@ namespace GameServer
         {
             Debug.DebugUtility.DebugLog("Initializing database...");
             
+            var dbType = _config.DatabaseType.ToLower() switch
+            {
+                "mongodb" => DatabaseFactory.DatabaseType.MongoDB,
+                "encryptedbinary" => DatabaseFactory.DatabaseType.EncryptedBinary,
+                "optimizedencryptedbinary" => DatabaseFactory.DatabaseType.OptimizedEncryptedBinary,
+                _ => DatabaseFactory.DatabaseType.OptimizedEncryptedBinary
+            };
+            
             _database = DatabaseFactory.CreateDatabase(
-                DatabaseFactory.DatabaseType.OptimizedEncryptedBinary,
-                "./GameData",
-                "YourSecureEncryptionKey123!"
+                dbType,
+                _config.DataDirectory,
+                _config.EncryptionKey
             );
 
             Debug.DebugUtility.DebugLog("Database initialized successfully");
@@ -157,6 +182,12 @@ namespace GameServer
         private int GetPlayerCount()
         {
             return new Random().Next(10, 100);
+        }
+
+        public void Shutdown()
+        {
+            Debug.DebugUtility.DebugLog("Shutdown requested from external source...");
+            InitiateGracefulShutdown();
         }
 
         public static async Task Main(string[] args)
