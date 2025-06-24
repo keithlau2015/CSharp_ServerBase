@@ -80,8 +80,24 @@ namespace Network
             #endregion
             
             #region Packet Handler
+            // Basic handlers
             packetHandlers.Add("Heartbeat", new HeartbeatHandler());
             packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
+            
+            // Lobby handlers (TCP)
+            packetHandlers.Add("CreateRoomRequest", new CreateRoomHandler());
+            packetHandlers.Add("JoinRoomRequest", new JoinRoomHandler());
+            packetHandlers.Add("LeaveRoomRequest", new LeaveRoomHandler());
+            packetHandlers.Add("GetRoomListRequest", new GetRoomListHandler());
+            packetHandlers.Add("PlayerReadyRequest", new PlayerReadyHandler());
+            packetHandlers.Add("StartGameRequest", new StartGameHandler());
+            packetHandlers.Add("ChatMessage", new ChatMessageHandler());
+            
+            // Real-time gameplay handlers (UDP preferred)
+            packetHandlers.Add("PlayerPositionUpdate", new PlayerPositionUpdateHandler());
+            packetHandlers.Add("PlayerAction", new PlayerActionHandler());
+            packetHandlers.Add("GameStateUpdate", new GameStateUpdateHandler());
+            packetHandlers.Add("PingRequest", new PingHandler());
 
             #endregion
 
@@ -143,6 +159,20 @@ namespace Network
             // Start server tasks instead of infinite loop
             var tcpTask = AcceptTcpClientsAsync(tcpCTS.Token);
             var udpTask = AcceptUdpClientsAsync(udpCTS.Token);
+            
+            // Start the demo in a separate task (optional - can be disabled in production)
+            var demoTask = Task.Run(async () =>
+            {
+                await Task.Delay(2000); // Wait for server to fully initialize
+                try
+                {
+                    await Demo.LobbyAndGameplayDemo.RunDemo();
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.ErrorLog($"Demo error: {ex.Message}");
+                }
+            });
             
             try
             {
