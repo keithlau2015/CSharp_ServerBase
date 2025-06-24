@@ -28,7 +28,17 @@ namespace Demo
             await DemoLobbyOperations();
             await DemoRealTimeGameplay();
             
-            Console.WriteLine("Demo completed!");
+            Console.WriteLine("✅ Lobby and Gameplay Demo completed!");
+            Console.WriteLine("📊 Server is ready for real connections!");
+            
+            // Start console command demo
+            await Task.Delay(1000);
+            await ConsoleCommandDemo.RunConsoleDemo();
+            
+            // Setup admin monitoring
+            ConsoleCommandDemo.SetupAdminNotifications();
+            
+            Console.WriteLine("🎯 All systems operational! Server ready for production use.");
         }
         
         #region Lobby Demo

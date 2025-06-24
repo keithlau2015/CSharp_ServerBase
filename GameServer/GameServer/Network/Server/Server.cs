@@ -181,6 +181,19 @@ namespace Network
                     Debug.DebugUtility.ErrorLog($"Demo error: {ex.Message}");
                 }
             });
+
+            // Start the admin console system
+            Task.Run(() =>
+            {
+                try
+                {
+                    Admin.ConsoleCommandManager.Instance.StartConsole();
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.ErrorLog($"Console manager error: {ex.Message}");
+                }
+            });
             
             try
             {
@@ -213,6 +226,9 @@ namespace Network
 
                         NetClient netClient = new NetClient();
                         netClient.tcProtocol.SetUp(tcpClient);
+                        
+                        // Check if client is banned (we'll check by IP and later by player ID)
+                        string clientIP = ((System.Net.IPEndPoint)tcpClient.Client.RemoteEndPoint).Address.ToString();
                         
                         if (!netClientMap.TryAdd(netClient.UID.ToString(), netClient))
                         {
