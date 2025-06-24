@@ -167,20 +167,6 @@ namespace Network
             // Start server tasks instead of infinite loop
             var tcpTask = AcceptTcpClientsAsync(tcpCTS.Token);
             var udpTask = AcceptUdpClientsAsync(udpCTS.Token);
-            
-            // Start the demo in a separate task (optional - can be disabled in production)
-            var demoTask = Task.Run(async () =>
-            {
-                await Task.Delay(2000); // Wait for server to fully initialize
-                try
-                {
-                    await Demo.LobbyAndGameplayDemo.RunDemo();
-                }
-                catch (Exception ex)
-                {
-                    Debug.DebugUtility.ErrorLog($"Demo error: {ex.Message}");
-                }
-            });
 
             // Start the admin console system
             Task.Run(() =>
