@@ -98,6 +98,14 @@ namespace Network
             packetHandlers.Add("PlayerAction", new PlayerActionHandler());
             packetHandlers.Add("GameStateUpdate", new GameStateUpdateHandler());
             packetHandlers.Add("PingRequest", new PingHandler());
+            
+            // VoIP handlers (UDP preferred for audio)
+            packetHandlers.Add("AudioPacket", new AudioPacketHandler());
+            packetHandlers.Add("VoiceStateUpdate", new VoiceStateUpdateHandler());
+            packetHandlers.Add("VoiceSettingsUpdate", new VoiceSettingsUpdateHandler());
+            packetHandlers.Add("PushToTalkState", new PushToTalkHandler());
+            packetHandlers.Add("VoiceQualityMetrics", new VoiceQualityMetricsHandler());
+            packetHandlers.Add("AudioDeviceRequest", new AudioDeviceRequestHandler());
 
             #endregion
 

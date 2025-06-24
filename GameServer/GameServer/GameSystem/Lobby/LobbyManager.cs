@@ -31,6 +31,18 @@ namespace GameSystem.Lobby
             
             if (_rooms.TryAdd(roomId, room))
             {
+                // Create voice channel for the room if VoIP is available
+                try
+                {
+                    var voipManager = GameSystem.VoIP.VoIPManager.Instance;
+                    voipManager.CreateVoiceChannel(roomId);
+                    Debug.DebugUtility.DebugLog($"Voice channel created for room: {roomName}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.WarningLog($"VoIP not available: {ex.Message}");
+                }
+                
                 Debug.DebugUtility.DebugLog($"Room created: {roomName} (ID: {roomId})");
                 OnRoomCreated?.Invoke(room);
                 return room;
@@ -49,6 +61,18 @@ namespace GameSystem.Lobby
                 foreach (var player in playersToKick)
                 {
                     LeaveRoom(player.UID, roomId);
+                }
+                
+                // Destroy voice channel if VoIP is available
+                try
+                {
+                    var voipManager = GameSystem.VoIP.VoIPManager.Instance;
+                    voipManager.DestroyVoiceChannel(roomId);
+                    Debug.DebugUtility.DebugLog($"Voice channel destroyed for room: {room.Name}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.WarningLog($"VoIP cleanup failed: {ex.Message}");
                 }
                 
                 Debug.DebugUtility.DebugLog($"Room destroyed: {room.Name} (ID: {roomId})");
@@ -103,6 +127,17 @@ namespace GameSystem.Lobby
                 if (!string.IsNullOrEmpty(player.CurrentRoomId))
                 {
                     LeaveRoom(playerUID, player.CurrentRoomId);
+                }
+                
+                // Clean up VoIP state if available
+                try
+                {
+                    var voipManager = GameSystem.VoIP.VoIPManager.Instance;
+                    voipManager.RemovePlayer(playerUID);
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.WarningLog($"VoIP player cleanup failed: {ex.Message}");
                 }
                 
                 Debug.DebugUtility.DebugLog($"Player removed: {player.Name} (UID: {playerUID})");
