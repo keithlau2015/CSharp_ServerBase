@@ -51,18 +51,20 @@ namespace GameServer.Utility
         /// </summary>
         public static bool IsPortAvailable(int port)
         {
+            TcpListener? tcpListener = null;
             try
             {
-                using (var tcpListener = new TcpListener(IPAddress.Any, port))
-                {
-                    tcpListener.Start();
-                    tcpListener.Stop();
-                    return true;
-                }
+                tcpListener = new TcpListener(IPAddress.Any, port);
+                tcpListener.Start();
+                return true;
             }
             catch (SocketException)
             {
                 return false;
+            }
+            finally
+            {
+                tcpListener?.Stop();
             }
         }
 
@@ -108,13 +110,13 @@ namespace GameServer.Utility
         {
             if (!IsWindows)
             {
-                Utility.Debug.DebugUtility.DebugLog("Windows firewall configuration skipped (not Windows)");
+                Debug.DebugUtility.DebugLog("Windows firewall configuration skipped (not Windows)");
                 return true;
             }
 
             try
             {
-                Utility.Debug.DebugUtility.DebugLog($"Configuring Windows Firewall for port {port}...");
+                Debug.DebugUtility.DebugLog($"Configuring Windows Firewall for port {port}...");
 
                 // Remove existing rules first
                 await RemoveFirewallRule(ruleName);
@@ -138,18 +140,18 @@ namespace GameServer.Utility
 
                 if (success)
                 {
-                    Utility.Debug.DebugUtility.DebugLog("✅ Windows Firewall configured successfully");
+                    Debug.DebugUtility.DebugLog("✅ Windows Firewall configured successfully");
                 }
                 else
                 {
-                    Utility.Debug.DebugUtility.WarningLog("⚠️ Some firewall rules may not have been created");
+                    Debug.DebugUtility.WarningLog("⚠️ Some firewall rules may not have been created");
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Utility.Debug.DebugUtility.ErrorLog($"Failed to configure Windows Firewall: {ex.Message}");
+                Debug.DebugUtility.ErrorLog($"Failed to configure Windows Firewall: {ex.Message}");
                 return false;
             }
         }
@@ -210,13 +212,13 @@ namespace GameServer.Utility
                 }
                 else
                 {
-                    Utility.Debug.DebugUtility.WarningLog("⚠️ Root privileges may be required for firewall configuration");
+                    Debug.DebugUtility.WarningLog("⚠️ Root privileges may be required for firewall configuration");
                     Console.WriteLine("Try running with: sudo ./GameServer");
                 }
             }
             catch (Exception ex)
             {
-                Utility.Debug.DebugUtility.ErrorLog($"Failed to request admin privileges: {ex.Message}");
+                Debug.DebugUtility.ErrorLog($"Failed to request admin privileges: {ex.Message}");
                 return false;
             }
 
