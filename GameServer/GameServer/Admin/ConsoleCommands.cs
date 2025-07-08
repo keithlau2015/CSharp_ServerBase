@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using GameSystem.Lobby;
 using GameSystem.VoIP;
@@ -173,12 +174,26 @@ namespace Admin
 
             var info = new StringBuilder();
             info.AppendLine($"👤 Player Information:");
-            info.AppendLine($"   Name: {player.Name}");
-            info.AppendLine($"   ID: {player.UID}");
-            info.AppendLine($"   Position: ({player.Position.X:F1}, {player.Position.Y:F1}, {player.Position.Z:F1})");
-            info.AppendLine($"   Health: {player.Health}/{player.MaxHealth}");
-            info.AppendLine($"   Score: {player.Score}");
-            info.AppendLine($"   Kills: {player.Kills} | Deaths: {player.Deaths} | K/D: {player.KillDeathRatio:F2}");
+            
+            // Use reflection to get all public properties
+            var playerType = player.GetType();
+            var properties = playerType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead)
+                .OrderBy(p => p.Name);
+
+            foreach (var property in properties)
+            {
+                try
+                {
+                    var value = property.GetValue(player);
+                    var formattedValue = FormatPropertyValue(property.Name, value);
+                    info.AppendLine($"   {property.Name}: {formattedValue}");
+                }
+                catch (Exception ex)
+                {
+                    info.AppendLine($"   {property.Name}: <Error reading value: {ex.Message}>");
+                }
+            }
 
             if (!string.IsNullOrEmpty(player.CurrentRoomId))
             {
@@ -207,6 +222,62 @@ namespace Admin
             }
 
             return CommandResult.SuccessResult(info.ToString());
+        }
+
+        private string FormatPropertyValue(string propertyName, object value)
+        {
+            if (value == null)
+                return "null";
+
+            // Handle special formatting cases
+            switch (propertyName.ToLower())
+            {
+                case "position":
+                    // Try to access X, Y, Z properties if it's a position object
+                    try
+                    {
+                        var posType = value.GetType();
+                        var x = posType.GetProperty("X")?.GetValue(value);
+                        var y = posType.GetProperty("Y")?.GetValue(value);
+                        var z = posType.GetProperty("Z")?.GetValue(value);
+                        if (x != null && y != null && z != null)
+                            return $"({x:F1}, {y:F1}, {z:F1})";
+                    }
+                    catch { }
+                    break;
+
+                case "killdeathRatio":
+                case "kdratio":
+                case "kd":
+                    if (value is float f)
+                        return f.ToString("F2");
+                    if (value is double d)
+                        return d.ToString("F2");
+                    break;
+
+                case "health":
+                    // For Health, we'll just return the value since MaxHealth will be shown separately
+                    return value.ToString();
+            }
+
+            // Handle numeric types with specific formatting
+            switch (value)
+            {
+                case float floatVal:
+                    return floatVal.ToString("F2");
+                case double doubleVal:
+                    return doubleVal.ToString("F2");
+                case decimal decimalVal:
+                    return decimalVal.ToString("F2");
+                case DateTime dateTime:
+                    return dateTime.ToString("yyyy-MM-dd HH:mm:ss");
+                case TimeSpan timeSpan:
+                    return timeSpan.ToString(@"dd\.hh\:mm\:ss");
+                case bool boolVal:
+                    return boolVal ? "Yes" : "No";
+                default:
+                    return value.ToString();
+            }
         }
 
         public string GetHelp() => "Show detailed information about a player";
@@ -376,14 +447,14 @@ namespace Admin
                 var privateIcon = room.IsPrivate ? "🔐" : "";
                 
                 result.AppendLine($"   {statusIcon} {room.Name} [{room.Id}] {privateIcon}");
-                result.AppendLine($"      Players: {room.GetPlayerCount()}/{room.MaxPlayers} | Status: {room.State}");
+                result.AppendLine($"      Players: {room.GetRoomInfo().PlayerCount}/{room.MaxPlayers} | Status: {room.State}");
                 
                 var players = room.GetPlayers().Take(3);
                 if (players.Any())
                 {
                     var playerNames = string.Join(", ", players.Select(p => p.Name));
-                    if (room.GetPlayerCount() > 3)
-                        playerNames += $" (+{room.GetPlayerCount() - 3} more)";
+                    if (room.GetRoomInfo().PlayerCount > 3)
+                        playerNames += $" (+{room.GetRoomInfo().PlayerCount - 3} more)";
                     result.AppendLine($"      Players: {playerNames}");
                 }
                 result.AppendLine();
@@ -413,7 +484,7 @@ namespace Admin
             info.AppendLine($"   Name: {room.Name}");
             info.AppendLine($"   ID: {room.Id}");
             info.AppendLine($"   Status: {room.State}");
-            info.AppendLine($"   Players: {room.GetPlayerCount()}/{room.MaxPlayers}");
+            info.AppendLine($"   Players: {room.GetRoomInfo().PlayerCount}/{room.MaxPlayers}");
             info.AppendLine($"   Private: {(room.IsPrivate ? "Yes" : "No")}");
             info.AppendLine($"   Game Started: {(room.IsGameStarted ? "Yes" : "No")}");
             info.AppendLine($"   Created: {room.CreatedAt:yyyy-MM-dd HH:mm:ss}");
