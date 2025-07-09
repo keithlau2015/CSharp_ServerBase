@@ -459,7 +459,7 @@ namespace Utility
                     break;
                 
                 case RecurrenceType.Monthly:
-                    scheduledEvent.NextExecutionTime = CalculateNextMonthlyExecution(scheduledEvent.MonthlyDay.Value, scheduledEvent.DailyTime?.TimeOfDay ?? TimeSpan.Zero);
+                    scheduledEvent.NextExecutionTime = CalculateNextMonthlyExecution(scheduledEvent.MonthlyDay.Value, scheduledEvent.DailyTime ?? TimeSpan.Zero);
                     break;
             }
         }

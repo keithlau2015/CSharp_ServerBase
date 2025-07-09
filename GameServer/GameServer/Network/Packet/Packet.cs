@@ -201,12 +201,12 @@ namespace Network
         /// Reads a object from the packet
         /// </summary>
         /// <returns> return object </returns>
-        public object ReadObject<T>()
+        public T ReadObject<T>()
         {
             using (var memStream = new MemoryStream(readableBuffer))
             {
                 memStream.Position = readPos;
-                var obj = Serializer.Deserialize<T>(memStream);
+                T obj = Serializer.Deserialize<T>(memStream);
                 return obj;
             }
         }
