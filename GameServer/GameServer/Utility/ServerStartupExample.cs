@@ -1,14 +1,16 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Utility;
 using Database;
+using Utility;
 using GameServer.Examples;
+using System.Threading;
+using Network;  // Add this for Server access
 
 namespace GameServer
 {
     /// <summary>
-    /// Example of how to integrate EventScheduler into your main server startup
+    /// Complete server startup orchestrator that integrates all components:
+    /// Database, EventScheduler, TCP/UDP Networking, and Admin Console
     /// </summary>
     public class ServerStartupExample
     {
@@ -17,17 +19,23 @@ namespace GameServer
         private DatabaseBase _database;
         private CancellationTokenSource _cancellationTokenSource;
         private ServerConfig _config;
+        private bool _isServerRunning = false;
 
         public async Task StartServer()
         {
             var defaultConfig = new ServerConfig
             {
+                ID = 1,
+                Name = "GameServer",
                 Port = 8080,
+                TCPPort = 8080,
+                UDPPort = 8081,
                 MaxPlayers = 100,
                 DatabaseType = "EncryptedBinary",
                 DataDirectory = "./GameData",
                 EncryptionKey = "DefaultGameServerKey2024!",
-                AutoStart = true
+                AutoStart = true,
+                DebugLevel = 1
             };
             
             await StartServerWithConfig(defaultConfig);
@@ -38,34 +46,43 @@ namespace GameServer
             try
             {
                 _config = config;
-                Debug.DebugUtility.DebugLog("=== Starting Game Server ===");
+                Debug.DebugUtility.DebugLog("🚀 === Starting Complete Game Server ===");
                 
                 _cancellationTokenSource = new CancellationTokenSource();
 
-                // Initialize Database
+                // 1. Initialize Database first
                 InitializeDatabase();
 
-                // Initialize EventScheduler
+                // 2. Initialize EventScheduler
                 InitializeEventScheduler();
 
-                // Setup graceful shutdown
+                // 3. Start the full TCP/UDP Server with all packet handlers
+                Debug.DebugUtility.DebugLog("🌐 Starting TCP/UDP Server...");
+                await Server.StartServerWithConfig(_config);
+
+                // 4. Setup graceful shutdown
                 SetupGracefulShutdown();
 
-                Debug.DebugUtility.DebugLog("=== Game Server Started Successfully ===");
+                _isServerRunning = true;
+                Debug.DebugUtility.DebugLog("🎉 === Complete Game Server Started Successfully ===");
+                Debug.DebugUtility.DebugLog($"🔗 Players can connect via TCP: {_config.TCPPort}, UDP: {_config.UDPPort}");
+                Debug.DebugUtility.DebugLog($"👥 Max Players: {_config.MaxPlayers}");
+                Debug.DebugUtility.DebugLog($"💾 Database: {_config.DatabaseType} at {_config.DataDirectory}");
+                Debug.DebugUtility.DebugLog($"⚙️ Admin Console: Available");
 
                 // Keep server running
                 await WaitForShutdown();
             }
             catch (Exception ex)
             {
-                Debug.DebugUtility.ErrorLog($"Failed to start server: {ex.Message}");
+                Debug.DebugUtility.ErrorLog($"Failed to start complete server: {ex.Message}");
                 throw;
             }
         }
 
         private void InitializeDatabase()
         {
-            Debug.DebugUtility.DebugLog("Initializing database...");
+            Debug.DebugUtility.DebugLog("💾 Initializing database...");
             
             var dbType = _config.DatabaseType.ToLower() switch
             {
@@ -81,18 +98,18 @@ namespace GameServer
                 _config.EncryptionKey
             );
 
-            Debug.DebugUtility.DebugLog("Database initialized successfully");
+            Debug.DebugUtility.DebugLog("✅ Database initialized successfully");
         }
 
         private void InitializeEventScheduler()
         {
-            Debug.DebugUtility.DebugLog("Initializing EventScheduler...");
+            Debug.DebugUtility.DebugLog("⏰ Initializing EventScheduler...");
             
             _eventScheduler = EventScheduler.Instance;
             _schedulerExample = new EventSchedulerExample();
             _schedulerExample.InitializeServerEvents();
 
-            // Schedule server heartbeat every 30 seconds
+            // Schedule server heartbeat and monitoring
             _eventScheduler.ScheduleRecurringEvent(
                 "ServerHeartbeat",
                 SendServerHeartbeat,
@@ -101,12 +118,30 @@ namespace GameServer
                 EventPriority.Low
             );
 
-            Debug.DebugUtility.DebugLog("EventScheduler initialized successfully");
+            // Schedule player count monitoring
+            _eventScheduler.ScheduleRecurringEvent(
+                "PlayerCountMonitor",
+                MonitorPlayerCount,
+                RecurrenceType.Seconds,
+                10,
+                EventPriority.Normal
+            );
+
+            // Schedule database backup
+            _eventScheduler.ScheduleRecurringEvent(
+                "DatabaseBackup",
+                BackupDatabase,
+                RecurrenceType.Minutes,
+                30,
+                EventPriority.High
+            );
+
+            Debug.DebugUtility.DebugLog("✅ EventScheduler initialized successfully");
         }
 
         private void SetupGracefulShutdown()
         {
-            Debug.DebugUtility.DebugLog("Setting up graceful shutdown handlers...");
+            Debug.DebugUtility.DebugLog("🛡️ Setting up graceful shutdown handlers...");
             
             Console.CancelKeyPress += OnCancelKeyPress;
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
@@ -114,7 +149,7 @@ namespace GameServer
 
         private async Task WaitForShutdown()
         {
-            Debug.DebugUtility.DebugLog("Server is running. Press Ctrl+C to shutdown gracefully.");
+            Debug.DebugUtility.DebugLog("🎮 Server is running. Press Ctrl+C to shutdown gracefully.");
             
             try
             {
@@ -122,58 +157,90 @@ namespace GameServer
             }
             catch (OperationCanceledException)
             {
-                Debug.DebugUtility.DebugLog("Shutdown requested...");
+                Debug.DebugUtility.DebugLog("🔄 Shutdown requested...");
             }
         }
 
         private void OnCancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
             e.Cancel = true;
-            Debug.DebugUtility.DebugLog("Ctrl+C detected. Initiating graceful shutdown...");
+            Debug.DebugUtility.DebugLog("🔄 Ctrl+C detected. Initiating graceful shutdown...");
             InitiateGracefulShutdown();
         }
 
         private void OnProcessExit(object sender, EventArgs e)
         {
-            Debug.DebugUtility.DebugLog("Process exit event detected. Initiating graceful shutdown...");
+            Debug.DebugUtility.DebugLog("🔄 Process exit event detected. Initiating graceful shutdown...");
             InitiateGracefulShutdown();
         }
 
         private void SendServerHeartbeat()
         {
-            Debug.DebugUtility.DebugLog($"Server heartbeat - Players: {GetPlayerCount()}");
+            int playerCount = Server.GetCurrentPlayerCount();
+            Debug.DebugUtility.DebugLog($"💓 Server heartbeat - Players: {playerCount}/{_config.MaxPlayers}");
+        }
+
+        private void MonitorPlayerCount()
+        {
+            int playerCount = Server.GetCurrentPlayerCount();
+            if (playerCount > _config.MaxPlayers * 0.8)
+            {
+                Debug.DebugUtility.WarningLog($"⚠️ High player load: {playerCount}/{_config.MaxPlayers} ({(playerCount / (float)_config.MaxPlayers) * 100:F1}%)");
+            }
+        }
+
+        private void BackupDatabase()
+        {
+            try
+            {
+                Debug.DebugUtility.DebugLog("💾 Creating database backup...");
+                DatabaseFactory.SaveDatabaseOnShutdown(_database);
+                Debug.DebugUtility.DebugLog("✅ Database backup completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.DebugUtility.ErrorLog($"❌ Database backup failed: {ex.Message}");
+            }
         }
 
         private void InitiateGracefulShutdown()
         {
-            if (_cancellationTokenSource.IsCancellationRequested)
+            if (_cancellationTokenSource.IsCancellationRequested || !_isServerRunning)
                 return;
 
             Task.Run(async () =>
             {
                 try
                 {
-                    Debug.DebugUtility.DebugLog("=== Starting Graceful Shutdown ===");
+                    Debug.DebugUtility.DebugLog("🔄 === Starting Graceful Shutdown ===");
 
+                    _isServerRunning = false;
                     _cancellationTokenSource.Cancel();
 
-                    Debug.DebugUtility.DebugLog("Saving all server data...");
+                    // 1. Stop accepting new connections
+                    Debug.DebugUtility.DebugLog("🔒 Stopping TCP/UDP server...");
+                    Server.ShutDown();
+
+                    // 2. Save all server data
+                    Debug.DebugUtility.DebugLog("💾 Saving all server data...");
                     DatabaseFactory.SaveDatabaseOnShutdown(_database);
 
-                    Debug.DebugUtility.DebugLog("Stopping EventScheduler...");
+                    // 3. Stop EventScheduler
+                    Debug.DebugUtility.DebugLog("⏰ Stopping EventScheduler...");
                     _schedulerExample.Shutdown();
 
+                    // 4. Cleanup database connection
                     if (_database is IDisposable disposableDb)
                     {
                         disposableDb.Dispose();
                     }
 
-                    Debug.DebugUtility.DebugLog("=== Graceful Shutdown Complete ===");
+                    Debug.DebugUtility.DebugLog("✅ === Graceful Shutdown Complete ===");
                     Environment.Exit(0);
                 }
                 catch (Exception ex)
                 {
-                    Debug.DebugUtility.ErrorLog($"Error during graceful shutdown: {ex.Message}");
+                    Debug.DebugUtility.ErrorLog($"❌ Error during graceful shutdown: {ex.Message}");
                     Environment.Exit(1);
                 }
             });
@@ -181,13 +248,18 @@ namespace GameServer
 
         private int GetPlayerCount()
         {
-            return new Random().Next(10, 100);
+            return Server.GetCurrentPlayerCount();
         }
 
         public void Shutdown()
         {
-            Debug.DebugUtility.DebugLog("Shutdown requested from external source...");
+            Debug.DebugUtility.DebugLog("🔄 Shutdown requested from external source...");
             InitiateGracefulShutdown();
+        }
+
+        public bool IsRunning()
+        {
+            return _isServerRunning && Server.IsServerRunning();
         }
 
         public static async Task Main(string[] args)

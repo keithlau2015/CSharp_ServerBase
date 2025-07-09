@@ -1,12 +1,11 @@
 {
-  "ServerConfig":
-    {
-      "ID": 0,
-      "Name": "Main",
-      "TCPPort": 45000,
-      "UDPPort": 45001,
-      "DatabaseUser": "",
-      "DatabasePw": "",
-      "DebugLevel": 1
-    }
+  "ServerConfig": {
+    "ID": 1,
+    "Name": "GameServer",
+    "TCPPort": 8080,
+    "UDPPort": 8081,
+    "DatabaseUser": "",
+    "DatabasePw": "",
+    "DebugLevel": 1
+  }
 }

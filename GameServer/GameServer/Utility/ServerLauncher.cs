@@ -4,6 +4,7 @@ using Utility;
 using Database;
 using GameServer.Examples;
 using GameServer.Utility;
+using Network;  // Add this for ServerConfig
 
 namespace GameServer
 {
@@ -36,8 +37,12 @@ namespace GameServer
             // Parse command line arguments
             var config = ParseArguments(args);
             
+            // Sync port configuration
+            config.SyncPorts();
+            
             Console.WriteLine("🎮 GameServer Starting...");
-            Console.WriteLine($"Port: {config.Port}");
+            Console.WriteLine($"TCP Port: {config.TCPPort}");
+            Console.WriteLine($"UDP Port: {config.UDPPort}");
             Console.WriteLine($"Max Players: {config.MaxPlayers}");
             Console.WriteLine($"Database: {config.DatabaseType}");
             Console.WriteLine($"Data Directory: {config.DataDirectory}");
@@ -45,7 +50,7 @@ namespace GameServer
 
             // Run network diagnostics
             Console.WriteLine("🔍 Running network diagnostics...");
-            var diagnostics = NetworkHelper.RunNetworkDiagnostics(config.Port);
+            var diagnostics = NetworkHelper.RunNetworkDiagnostics(config.TCPPort);
             Console.WriteLine(diagnostics.ToString());
 
             // Handle port conflicts
@@ -53,8 +58,10 @@ namespace GameServer
             {
                 if (diagnostics.SuggestedPort > 0)
                 {
-                    Console.WriteLine($"⚠️ Port {config.Port} is in use. Switching to port {diagnostics.SuggestedPort}");
-                    config.Port = diagnostics.SuggestedPort;
+                    Console.WriteLine($"⚠️ Port {config.TCPPort} is in use. Switching to port {diagnostics.SuggestedPort}");
+                    config.TCPPort = diagnostics.SuggestedPort;
+                    config.UDPPort = diagnostics.SuggestedPort + 1;
+                    config.Port = diagnostics.SuggestedPort; // Keep in sync
                 }
                 else
                 {
@@ -88,12 +95,17 @@ namespace GameServer
         {
             var config = new ServerConfig
             {
+                ID = 1,
+                Name = "GameServer",
                 Port = 8080,
+                TCPPort = 8080,
+                UDPPort = 8081,
                 MaxPlayers = 100,
                 DatabaseType = "EncryptedBinary",
                 DataDirectory = "./GameData",
                 EncryptionKey = "DefaultGameServerKey2024!",
-                AutoStart = true
+                AutoStart = true,
+                DebugLevel = 1
             };
 
             for (int i = 0; i < args.Length; i++)
@@ -105,6 +117,8 @@ namespace GameServer
                         if (i + 1 < args.Length && int.TryParse(args[i + 1], out int port))
                         {
                             config.Port = port;
+                            config.TCPPort = port;
+                            config.UDPPort = port + 1;
                             i++;
                         }
                         break;
@@ -269,17 +283,5 @@ namespace GameServer
             
             Console.WriteLine();
         }
-    }
-
-    public class ServerConfig
-    {
-        public int Port { get; set; }
-        public int MaxPlayers { get; set; }
-        public string DatabaseType { get; set; }
-        public string DataDirectory { get; set; }
-        public string EncryptionKey { get; set; }
-        public bool AutoStart { get; set; }
-        public bool ConfigureFirewall { get; set; }
-        public bool ShowPortForwarding { get; set; }
     }
 } 

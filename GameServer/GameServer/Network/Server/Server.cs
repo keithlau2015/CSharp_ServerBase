@@ -41,6 +41,170 @@ namespace Network
         //Server Status
         public static ServerStatus serverStatus { get; private set; } = null;
 
+        // Add static method to start server with config object
+        public static async Task StartServerWithConfig(ServerConfig config)
+        {
+            try
+            {
+                Debug.DebugUtility.DebugLog($"=== Starting TCP/UDP Server ===");
+                Debug.DebugUtility.DebugLog($"Server Name: {config.Name}");
+                Debug.DebugUtility.DebugLog($"TCP Port: {config.TCPPort}");
+                Debug.DebugUtility.DebugLog($"UDP Port: {config.UDPPort}");
+                
+                // Initialize Debug utility
+                Debug.DebugUtility.Init(config.DebugLevel);
+                
+                // Set ports from config
+                tcpPort = config.TCPPort;
+                udpPort = config.UDPPort;
+
+                // Validate and adjust ports if needed
+                if (tcpPort <= 1024 || tcpPort > 65535 || IsPortOccupied(tcpPort))
+                {
+                    Debug.DebugUtility.WarningLog($"TCP Port {tcpPort} is invalid or occupied, using default {DEFAULT_TCP_PORT}");
+                    tcpPort = DEFAULT_TCP_PORT;
+                }
+
+                if (udpPort <= 1024 || udpPort > 65535 || IsPortOccupied(udpPort))
+                {
+                    Debug.DebugUtility.WarningLog($"UDP Port {udpPort} is invalid or occupied, using default {DEFAULT_UDP_PORT}");
+                    udpPort = DEFAULT_UDP_PORT;
+                }
+
+                // Initialize cancellation tokens
+                tcpCTS = new CancellationTokenSource();
+                udpCTS = new CancellationTokenSource();
+                
+                // Initialize packet handlers
+                InitializePacketHandlers();
+
+                // Initialize server status
+                serverStatus = new ServerStatus(config.ID, config.Name, (int)ServerStatus.Status.standard);
+
+                // Start the server
+                await StartServer();
+            }
+            catch (Exception ex)
+            {
+                Debug.DebugUtility.ErrorLog($"Failed to start server with config: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static void InitializePacketHandlers()
+        {
+            Debug.DebugUtility.DebugLog("Initializing packet handlers...");
+            
+            // Clear existing handlers
+            packetHandlers.Clear();
+            
+            // Basic handlers
+            packetHandlers.Add("Heartbeat", new HeartbeatHandler());
+            packetHandlers.Add(typeof(ServerStatus).ToString(), new GenericPacketHandler<Packet>(ResponseServerStatus));
+            
+            // Lobby handlers (TCP)
+            packetHandlers.Add("CreateRoomRequest", new CreateRoomHandler());
+            packetHandlers.Add("JoinRoomRequest", new JoinRoomHandler());
+            packetHandlers.Add("LeaveRoomRequest", new LeaveRoomHandler());
+            packetHandlers.Add("GetRoomListRequest", new GetRoomListHandler());
+            packetHandlers.Add("PlayerReadyRequest", new PlayerReadyHandler());
+            packetHandlers.Add("StartGameRequest", new StartGameHandler());
+            packetHandlers.Add("ChatMessage", new ChatMessageHandler());
+            
+            // Real-time gameplay handlers (UDP preferred)
+            packetHandlers.Add("PlayerPositionUpdate", new PlayerPositionUpdateHandler());
+            packetHandlers.Add("PlayerAction", new PlayerActionHandler());
+            packetHandlers.Add("GameStateUpdate", new GameStateUpdateHandler());
+            packetHandlers.Add("PingRequest", new PingHandler());
+            
+            // VoIP handlers (UDP preferred for audio)
+            packetHandlers.Add("AudioPacket", new AudioPacketHandler());
+            packetHandlers.Add("VoiceStateUpdate", new VoiceStateUpdateHandler());
+            packetHandlers.Add("VoiceSettingsUpdate", new VoiceSettingsUpdateHandler());
+            packetHandlers.Add("PushToTalkState", new PushToTalkHandler());
+            packetHandlers.Add("VoiceQualityMetrics", new VoiceQualityMetricsHandler());
+            packetHandlers.Add("AudioDeviceRequest", new AudioDeviceRequestHandler());
+
+            Debug.DebugUtility.DebugLog($"Initialized {packetHandlers.Count} packet handlers");
+        }
+
+        private static async Task StartServer()
+        {
+            //Get Current Computer Name
+            string hostName = Dns.GetHostName();
+            //Get Current Computer IP
+            IPAddress[] ipa = Dns.GetHostAddresses(hostName, AddressFamily.InterNetwork);
+            
+            // Find the first non-private IP address
+            IPAddress serverIP = IPAddress.Any;
+            for (int i = 0; i < ipa.Length; i++)
+            {
+                IPAddress iPAddress = ipa[i];
+                string[] ipAddressSplit = iPAddress.ToString().Split('.');
+                
+                if (ipAddressSplit.Length == 4)
+                {
+                    // Skip private IP ranges (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+                    if (!ipAddressSplit[0].Trim().Equals("192") && 
+                        !ipAddressSplit[0].Trim().Equals("10") &&
+                        !(ipAddressSplit[0].Trim().Equals("172") && 
+                          int.Parse(ipAddressSplit[1]) >= 16 && 
+                          int.Parse(ipAddressSplit[1]) <= 31))
+                    {
+                        serverIP = iPAddress;
+                        break;
+                    }
+                }
+            }
+            
+            // If no public IP found, use the first available IP
+            if (serverIP.Equals(IPAddress.Any) && ipa.Length > 0)
+            {
+                serverIP = ipa[0];
+            }
+
+            try
+            {
+                //Init TCP
+                IPEndPoint tcpIPE = new IPEndPoint(serverIP, tcpPort);
+                tcpListener = new TcpListener(tcpIPE);
+                tcpListener.Start();
+                Debug.DebugUtility.DebugLog($"✅ TCP Server Started [{serverStatus.Name}] on {serverIP}:{tcpPort}");
+                
+                //Init UDP
+                IPEndPoint udpIPE = new IPEndPoint(serverIP, udpPort);
+                udpListener = new UdpClient(udpIPE);
+                Debug.DebugUtility.DebugLog($"✅ UDP Server Started [{serverStatus.Name}] on {serverIP}:{udpPort}");
+            }
+            catch (Exception ex)
+            {
+                Debug.DebugUtility.ErrorLog($"Failed to initialize listeners: {ex.Message}");
+                throw;
+            }
+
+            // Start server tasks in background
+            _ = Task.Run(async () => await AcceptTcpClientsAsync(tcpCTS.Token), tcpCTS.Token);
+            _ = Task.Run(async () => await AcceptUdpClientsAsync(udpCTS.Token), udpCTS.Token);
+
+            // Start the admin console system
+            Task.Run(() =>
+            {
+                try
+                {
+                    Debug.DebugUtility.DebugLog("🖥️ Starting Admin Console...");
+                    Admin.ConsoleCommandManager.Instance.StartConsole();
+                }
+                catch (Exception ex)
+                {
+                    Debug.DebugUtility.ErrorLog($"Console manager error: {ex.Message}");
+                }
+            });
+            
+            Debug.DebugUtility.DebugLog("🎮 TCP/UDP Server is ready for connections!");
+            
+            // Don't block here - let ServerStartupExample handle the wait loop
+        }
+
         public static async Task Main(string[] args)
         {
             #region Server Config
@@ -351,16 +515,47 @@ namespace Network
 
         public static void ShutDown(bool tcp = true, bool udp = true)
         {
+            Debug.DebugUtility.DebugLog("🔴 Shutting down TCP/UDP server...");
+            
             if(tcp)
             {
                 if(!tcpCTS.IsCancellationRequested)
                     tcpCTS.Cancel();
+                tcpListener?.Stop();
+                Debug.DebugUtility.DebugLog("TCP server stopped");
             }
             if(udp)
             {
                 if(!udpCTS.IsCancellationRequested)
                     udpCTS.Cancel();
+                udpListener?.Close();
+                Debug.DebugUtility.DebugLog("UDP server stopped");
             }
+
+            // Stop admin console
+            try
+            {
+                Admin.ConsoleCommandManager.Instance.StopConsole();
+                Debug.DebugUtility.DebugLog("Admin console stopped");
+            }
+            catch (Exception ex)
+            {
+                Debug.DebugUtility.ErrorLog($"Error stopping admin console: {ex.Message}");
+            }
+
+            Debug.DebugUtility.DebugLog("🔴 TCP/UDP Server shutdown complete");
+        }
+
+        public static int GetCurrentPlayerCount()
+        {
+            return netClientMap.Count;
+        }
+
+        public static bool IsServerRunning()
+        {
+            return tcpListener != null && udpListener != null && 
+                   tcpCTS != null && udpCTS != null &&
+                   !tcpCTS.IsCancellationRequested && !udpCTS.IsCancellationRequested;
         }
         #endregion
         
