@@ -13,7 +13,7 @@ namespace GameServer
     /// </summary>
     public class ServerLauncher
     {
-        private ServerStartupExample _server;
+        private GameServerManager _server;
         
         public static async Task Main(string[] args)
         {
@@ -80,7 +80,7 @@ namespace GameServer
             ShowNetworkInformation(config, diagnostics);
             
             // Initialize server with configuration
-            _server = new ServerStartupExample();
+                            _server = new GameServerManager();
             await _server.StartServerWithConfig(config);
             
             // Keep server running

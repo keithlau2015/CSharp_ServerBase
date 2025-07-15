@@ -26,9 +26,6 @@ namespace GameServer.Examples
             
             // Setup game events
             SetupGameEvents();
-            
-            // Setup monitoring
-            SetupPerformanceMonitoring();
 
             Debug.DebugUtility.DebugLog("All server events have been scheduled");
         }
@@ -132,29 +129,6 @@ namespace GameServer.Examples
 
         #endregion
 
-        #region Performance Monitoring
-
-        private void SetupPerformanceMonitoring()
-        {
-            // Monitor server performance every minute
-            _scheduler.ScheduleRecurringEvent(
-                "PerformanceMonitor",
-                MonitorServerPerformance,
-                RecurrenceType.Minutes,
-                1,
-                EventPriority.Low
-            );
-        }
-
-        private void MonitorServerPerformance()
-        {
-            // Monitor CPU, memory, network usage
-            var playerCount = GetCurrentPlayerCount();
-            Debug.DebugUtility.DebugLog($"Performance check - Active players: {playerCount}");
-        }
-
-        #endregion
-
         #region Helper Methods
 
         private void SaveAllPlayerData()
@@ -162,11 +136,6 @@ namespace GameServer.Examples
             Debug.DebugUtility.DebugLog("Auto-saving player data...");
             // Save all connected players' data
             Debug.DebugUtility.DebugLog("Player data auto-save completed");
-        }
-
-        private int GetCurrentPlayerCount()
-        {
-            return new Random().Next(50, 500);
         }
 
         #endregion
